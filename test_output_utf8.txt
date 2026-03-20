@@ -1,0 +1,8 @@
+﻿
+--- Testing C:\Users\HP\OneDrive\Desktop\Projects-3\Capstone_AccessAudio\ml\mobilenetv2.pth.zip ---
+Could not load as TorchScript. Checking if it's a State Dictionary...
+[ERROR] Failed to load C:\Users\HP\OneDrive\Desktop\Projects-3\Capstone_AccessAudio\ml\mobilenetv2.pth.zip. Is the file corrupted? Error: No module named 'configs'
+
+--- Testing C:\Users\HP\OneDrive\Desktop\Projects-3\Capstone_AccessAudio\ml\best_model.pth.zip ---
+Could not load as TorchScript. Checking if it's a State Dictionary...
+[ERROR] Failed to load C:\Users\HP\OneDrive\Desktop\Projects-3\Capstone_AccessAudio\ml\best_model.pth.zip. Is the file corrupted? Error: No module named 'configs'

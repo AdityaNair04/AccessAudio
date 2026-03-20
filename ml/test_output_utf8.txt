@@ -1,0 +1,10 @@
+﻿
+--- Testing C:\Users\HP\OneDrive\Desktop\Projects-3\Capstone_AccessAudio\ml\mobilenetv2.pth.zip ---
+Could not load as TorchScript. Checking if it's a State Dictionary...
+[SUCCESS] Successfully loaded C:\Users\HP\OneDrive\Desktop\Projects-3\Capstone_AccessAudio\ml\mobilenetv2.pth.zip as a State Dictionary!
+[WARNING] IMPORTANT: Because this is just weights, you MUST define the original PyTorch model class first, instantiate it, and then run `model.load_state_dict(weights)` to use it.
+
+--- Testing C:\Users\HP\OneDrive\Desktop\Projects-3\Capstone_AccessAudio\ml\best_model.pth.zip ---
+Could not load as TorchScript. Checking if it's a State Dictionary...
+[SUCCESS] Successfully loaded C:\Users\HP\OneDrive\Desktop\Projects-3\Capstone_AccessAudio\ml\best_model.pth.zip as a State Dictionary!
+[WARNING] IMPORTANT: Because this is just weights, you MUST define the original PyTorch model class first, instantiate it, and then run `model.load_state_dict(weights)` to use it.

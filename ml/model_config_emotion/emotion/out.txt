@@ -1,0 +1,9 @@
+﻿
+--- Testing Emotion Model: mobilenetv2.pth.zip ---
+[INFO] Initializing MobileNetV2 architecture with 8 classes...
+[INFO] Architecture created successfully. Loading weights...
+[SUCCESS] Model weights loaded into architecture successfully!
+[INFO] Testing inference with dummy tensor (1 image, 3 channels, 224x224)...
+[SUCCESS] Inference works! Output shape: torch.Size([1, 8]) (Expected: 1, 8)
+Sample raw logits: [-8.609395  -4.729691   4.5301585 -4.250821   5.200029  -4.604467
+ -4.478692  -6.4554863]

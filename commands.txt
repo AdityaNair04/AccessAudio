@@ -1,0 +1,6 @@
+StreamTalk: npm run dev 
+avatar/translate: npm start 
+ml: .\ai_env\Scripts\python.exe ml\webcam_sign.py  
+    .\ai_env\Scripts\python.exe ml\webcam_emotion.py
+face + sign (ml, asl): .\ai_env\Scripts\python.exe ml\unified_pipeline.py
+face + sign (ml, isl): .\ai_env\Scripts\python.exe ml\unified_pipeline_v2.py

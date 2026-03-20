@@ -23,8 +23,18 @@ Thumbs.db
 **/*.mov
 
 # --- ML repos: keep as reference only (do not commit datasets/models) ---
-ml/**
+**/*.pth.zip
+**/*.pth
+**/*.h5
+**/*.npy
+**/*.tflite
 *.npy
 *.h5
 *.ipynb
 *.pdf
+
+# Environments and heavy cloned repos
+ai_env/
+.venv/
+venv/
+sign-language-recognition/
