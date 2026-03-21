@@ -20,7 +20,7 @@ import tensorflow as tf
 
 ML_DIR = os.path.dirname(os.path.abspath(__file__))
 EMOTION_DIR = os.path.join(ML_DIR, "model_config_emotion", "emotion")
-TFLITE_REPO_DIR = os.path.join(os.path.dirname(ML_DIR), "sign-language-recognition", "streamlit")
+TFLITE_MODEL_PATH = os.path.join(ML_DIR, "models", "model.tflite")
 
 # --- Model Loaders ---
 def load_v3_label_map():
@@ -53,8 +53,7 @@ def get_emotion_model():
     return model, emotions
 
 def get_sign_model_tflite():
-    model_path = os.path.join(TFLITE_REPO_DIR, "model.tflite")
-    interpreter = tf.lite.Interpreter(model_path=model_path)
+    interpreter = tf.lite.Interpreter(model_path=TFLITE_MODEL_PATH)
     prediction_fn = interpreter.get_signature_runner("serving_default")
     seq_len = 30
     return prediction_fn, seq_len
