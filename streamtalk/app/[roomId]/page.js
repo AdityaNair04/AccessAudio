@@ -12,6 +12,10 @@ import useChat from "@/hooks/use-chat";
 
 import CopySection from "@/components/copy-section";
 
+import usePythonAI from "@/hooks/use-python-ai";
+import useSpeechToText from "@/hooks/use-speech-to-text";
+import CaptionsOverlay from "@/components/ui/captions-overlay";
+
 // Modern UI Components
 import SimpleCallLayout from "@/components/ui/simple-call-layout";
 import FloatingControls from "@/components/ui/floating-controls";
@@ -56,6 +60,7 @@ const Room = () => {
   const [callStartTime] = useState(Date.now());
   const [callDuration, setCallDuration] = useState(0);
   const [showTroubleshooter, setShowTroubleshooter] = useState(false);
+  const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
 
   // Initialize chat functionality
   const {
@@ -64,7 +69,30 @@ const Room = () => {
     isConnected: isChatConnected,
     sendMessage,
     cleanupPeerDataChannel,
+    sendCaption, 
+    captions
   } = useChat(peer, myId, users);
+
+  // Disable AI processing completely if the user is the only one in the room
+  // Also disable Sign Language AI if they have manually enabled Voice STT (since they are mutually exclusive)
+  const isAlone = Object.keys(players).length <= 1;
+
+  // Initialize WebRTC-to-Python AI Bridge (Sign Language)
+  const { aiStatus, aiBuffer, aiEmotion, triggerTranslation, clearBuffer } = usePythonAI(
+    stream, 
+    isVideoEnabled, 
+    (!isAlone && !isSpeechEnabled), // isActive parameter
+    (translation) => {
+      // Broadcast translation to remote peers natively
+      sendCaption(translation);
+    }
+  );
+
+  // Initialize Native Browser Speech-to-Text Pipeline
+  const { interimTranscript } = useSpeechToText(isSpeechEnabled, (finalText) => {
+    // Automatically broadcast Voice captions as soon as an utterance finishes
+    sendCaption({ text: finalText, emotion: "Speaking" });
+  });
 
   // Call duration timer
   useEffect(() => {
@@ -341,7 +369,7 @@ const Room = () => {
         {/* Main Video Area */}
         <div className="h-full flex flex-col">
           {/* Video Grid */}
-          <div className="flex-1 p-4 pb-24 overflow-hidden">
+          <div className="flex-1 w-full p-4 overflow-hidden">
             <SimpleVideoGrid
               players={players}
               highlightedPlayerId={
@@ -355,9 +383,23 @@ const Room = () => {
                 console.log(`Player ${playerId} clicked`);
               }}
               myId={myId}
-              isAudioEnabled={isAudioEnabled} // Pass actual audio state
-              selectedAudioOutput={selectedAudioOutput} // Pass selected audio output
+              isAudioEnabled={isAudioEnabled} 
+              selectedAudioOutput={selectedAudioOutput} 
               className="h-full"
+            />
+          </div>
+
+          {/* Global Captions UI Overlay - Flex-stacked below the video grid */}
+          <div className="w-full max-w-3xl pb-24 px-4 z-40 self-center">
+            <CaptionsOverlay 
+              captions={captions || []}
+              aiStatus={aiStatus}
+              aiBuffer={aiBuffer}
+              aiEmotion={aiEmotion}
+              onApprove={triggerTranslation}
+              onClear={clearBuffer}
+              isSpeechEnabled={isSpeechEnabled}
+              interimTranscript={interimTranscript}
             />
           </div>
 
@@ -376,6 +418,8 @@ const Room = () => {
             toggleVideo={toggleVideo}
             leaveRoom={leaveRoom}
             onTroubleshoot={() => setShowTroubleshooter(true)}
+            isSpeechEnabled={isSpeechEnabled}
+            toggleSpeechToText={() => setIsSpeechEnabled(!isSpeechEnabled)}
           />
         )}
 

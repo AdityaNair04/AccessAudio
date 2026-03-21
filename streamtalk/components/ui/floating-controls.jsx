@@ -1,4 +1,4 @@
-import { Mic, Video, PhoneOff, MicOff, VideoOff, Settings } from "lucide-react";
+import { Mic, Video, PhoneOff, MicOff, VideoOff, Settings, Captions, CaptionsOff } from "lucide-react";
 
 const FloatingControls = ({
   muted,
@@ -7,6 +7,8 @@ const FloatingControls = ({
   toggleVideo,
   leaveRoom,
   onTroubleshoot,
+  isSpeechEnabled,
+  toggleSpeechToText,
 }) => {
   return (
     <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
@@ -45,6 +47,22 @@ const FloatingControls = ({
           title="Leave call"
         >
           <PhoneOff size={18} />
+        </button>
+
+        {/* Separator */}
+        <div className="w-px h-8 bg-white/20 mx-1"></div>
+
+        {/* Speech to Text Control */}
+        <button
+          onClick={toggleSpeechToText}
+          className={`p-3 rounded-2xl transition-all duration-200 shadow-lg ${
+            isSpeechEnabled
+              ? "bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white transform hover:scale-105"
+              : "bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 text-gray-200 hover:text-white"
+          }`}
+          title={isSpeechEnabled ? "Turn off Live Speech Captions" : "Turn on Live Speech Captions"}
+        >
+          {isSpeechEnabled ? <Captions size={18} /> : <CaptionsOff size={18} />}
         </button>
 
       </div>

@@ -13,6 +13,8 @@ import { cloneDeep } from "lodash";
 const useChat = (peer, myId, users = {}) => {
   // Chat messages state
   const [messages, setMessages] = useState([]);
+  // Captions state
+  const [captions, setCaptions] = useState([]);
   // Data channels for each peer
   const [dataChannels, setDataChannels] = useState({});
   // Track which peers have data channels established
@@ -41,6 +43,17 @@ const useChat = (peer, myId, users = {}) => {
       return [...prev, newMessage];
     });
   }, [myId]);
+
+  /**
+   * Add a caption directly to the state
+   */
+  const addCaption = useCallback((caption) => {
+    setCaptions(prev => {
+      // Keep only the last 3-4 captions to avoid cluttering memory
+      const newCaptions = [...prev, caption];
+      return newCaptions.slice(-5);
+    });
+  }, []);
 
   /**
    * Send a text message to all connected peers
@@ -79,6 +92,39 @@ const useChat = (peer, myId, users = {}) => {
   }, [myId, dataChannels, addMessage]);
 
   /**
+   * Send a caption to all connected peers
+   */
+  const sendCaption = useCallback((captionData) => {
+    if (!captionData) return false;
+
+    const captionMsg = {
+      id: `${myId}-${Date.now()}-${Math.random()}`,
+      ...captionData,
+      senderId: myId,
+      timestamp: new Date().toISOString(),
+      type: 'caption'
+    };
+
+    // Add locally
+    addCaption(captionMsg);
+
+    // Send to all
+    let sentCount = 0;
+    Object.entries(dataChannels).forEach(([peerId, channel]) => {
+      if (channel && channel.readyState === 'open') {
+        try {
+          channel.send(JSON.stringify(captionMsg));
+          sentCount++;
+        } catch (error) {
+          console.error(`Failed to send caption to peer ${peerId}:`, error);
+        }
+      }
+    });
+
+    return sentCount > 0;
+  }, [myId, dataChannels, addCaption]);
+
+  /**
    * Handle incoming data channel messages
    * @param {MessageEvent} event - The message event from data channel
    */
@@ -90,6 +136,11 @@ const useChat = (peer, myId, users = {}) => {
         // Validate message structure
         if (data.senderId && data.text && data.id) {
           addMessage(data);
+        }
+      } else if (data.type === 'caption') {
+        // Handle incoming captions
+        if (data.senderId && data.text) {
+          addCaption(data);
         }
       }
     } catch (error) {
@@ -242,12 +293,15 @@ const useChat = (peer, myId, users = {}) => {
   return {
     // State
     messages,
+    captions,
     connectedPeers: Array.from(connectedPeers),
     isConnected: connectedPeers.size > 0,
     
     // Actions
     sendMessage,
     addMessage,
+    sendCaption,
+    addCaption,
     clearMessages,
     cleanupPeerDataChannel,
     
