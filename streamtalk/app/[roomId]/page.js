@@ -404,7 +404,7 @@ const Room = () => {
               {/* Angular Subsystem Embedded Execution */}
               <iframe 
                 ref={avatarIframeRef}
-                src="/avatar/index.html?embed=true" 
+                src="/avatar/?embed=true" 
                 className="w-full flex-1 border-none bg-slate-900"
                 title="Avatar Interpreter"
               />

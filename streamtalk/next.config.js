@@ -20,6 +20,18 @@ const nextConfig = {
     }
     return config;
   },
+  async rewrites() {
+    return [
+      {
+        source: '/avatar',
+        destination: '/avatar/index.html',
+      },
+      {
+        source: '/avatar/',
+        destination: '/avatar/index.html',
+      }
+    ];
+  },
 };
 
 module.exports = nextConfig;
