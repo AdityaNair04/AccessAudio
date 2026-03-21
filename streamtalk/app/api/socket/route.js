@@ -24,10 +24,14 @@ const cleanupOldSessions = () => {
   }
 };
 
-// Run cleanup every minute
-setInterval(cleanupOldSessions, 60000);
+let lastCleanupTime = Date.now();
 
 export async function GET(request) {
+  // Lazy cleanup (only run if 60 seconds have passed since last cleanup)
+  if (Date.now() - lastCleanupTime > 60000) {
+    cleanupOldSessions();
+    lastCleanupTime = Date.now();
+  }
   const { searchParams } = new URL(request.url);
   const action = searchParams.get("action");
   const roomId = searchParams.get("roomId");
@@ -142,6 +146,12 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  // Lazy cleanup (only run if 60 seconds have passed since last cleanup)
+  if (Date.now() - lastCleanupTime > 60000) {
+    cleanupOldSessions();
+    lastCleanupTime = Date.now();
+  }
+
   try {
     const body = await request.json();
     const { action, roomId, userId, sessionId, targetUserId } = body;
