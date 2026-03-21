@@ -1,0 +1,12 @@
+fastapi==0.110.0
+uvicorn==0.29.0
+websockets==12.0
+opencv-python-headless==4.9.0.80
+torch==2.2.1
+torchvision==0.17.1
+numpy<2.0.0
+pandas==2.2.1
+mediapipe==0.10.11
+tensorflow-cpu==2.15.0
+google-genai==0.3.0
+python-multipart==0.0.9

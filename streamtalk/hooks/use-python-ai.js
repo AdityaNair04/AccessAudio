@@ -39,7 +39,9 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
         canvas.height = 300;
         const ctx = canvas.getContext("2d");
 
-        const ws = new WebSocket("ws://localhost:8000/ws");
+        const wsUrl = process.env.NEXT_PUBLIC_AI_WS_URL || "ws://localhost:8000/ws";
+        console.log(`🔌 Connecting to AI WebSocket at ${wsUrl}`);
+        const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 
         ws.onopen = () => {
