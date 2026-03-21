@@ -24,7 +24,7 @@ TFLITE_MODEL_PATH = os.path.join(ML_DIR, "models", "model.tflite")
 
 # --- Model Loaders ---
 def load_v3_label_map():
-    csv_path = os.path.join(TFLITE_REPO_DIR, 'train.csv')
+    csv_path = os.path.join(ML_DIR, "models", "train.csv")
     try:
         train = pd.read_csv(csv_path)
         train['sign_ord'] = train['sign'].astype('category').cat.codes
