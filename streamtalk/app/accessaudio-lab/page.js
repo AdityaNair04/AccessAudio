@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { FilesetResolver, FaceLandmarker, HandLandmarker } from "@mediapipe/tasks-vision";
+// Mediapipe is dynamically imported below to prevent Vercel Serverless Function 50MB limit failures
 
 export default function AccessAudioLab() {
     const videoRef = useRef(null);
@@ -33,7 +33,9 @@ export default function AccessAudioLab() {
 
                 setStatus("Loading MediaPipe (WASM + models)...");
 
-                // As per @mediapipe/tasks-vision docs: load WASM via jsDelivr. [web:31]
+                // Dynamically import to bypass Vercel SSR Bundle limits
+                const { FilesetResolver, FaceLandmarker, HandLandmarker } = await import("@mediapipe/tasks-vision");
+
                 const vision = await FilesetResolver.forVisionTasks(
                     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
                 );
