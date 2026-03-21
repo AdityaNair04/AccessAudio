@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/landing/landing.component.scss"],
+  "sourcesContent": ["@use '../../../theme/breakpoints' as breakpoints;\r\n\r\n:host ::ng-deep {\r\n  router-outlet + * {\r\n    display: flex;\r\n    flex-direction: column;\r\n    flex: 1;\r\n  }\r\n\r\n  .cards-container {\r\n    display: flex;\r\n    @media #{breakpoints.$breakpoint-lt-md} {\r\n      flex-direction: column;\r\n    }\r\n  }\r\n}\r\n"],
+  "mappings": "AAGE,MAAA,UAAA,aAAA,CAAA,EACE,QAAA,KACA,eAAA,OACA,KAAA,EAGF,MAAA,UAAA,CAAA,gBACE,QAAA,KACA,OAAA,YAAA,UAAA,OAFF,MAAA,UAAA,CAAA,gBAGI,eAAA",
+  "names": []
+}

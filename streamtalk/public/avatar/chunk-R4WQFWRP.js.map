@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/components/logo/logo.component.ts", "src/app/components/logo/logo.component.html"],
+  "sourcesContent": ["import {Component, Input} from '@angular/core';\r\n\r\n@Component({\r\n  selector: 'app-logo',\r\n  templateUrl: './logo.component.html',\r\n  styleUrl: './logo.component.scss',\r\n})\r\nexport class LogoComponent {\r\n  @Input() text?: string = ' ';\r\n}\r\n", "<a href=\"/\" style=\"text-decoration: none; color: inherit; font-size: 1.5rem; font-weight: bold;\">\r\n  AccessAudio\r\n</a>\r\n"],
+  "mappings": "iEAOA,IAAaA,GAAa,IAAA,CAApB,MAAOA,CAAa,CAL1BC,aAAA,CAMW,KAAAC,KAAgB,oDADdF,EAAa,CAAA,+BAAbA,EAAaG,UAAA,CAAA,CAAA,UAAA,CAAA,EAAAC,OAAA,CAAAF,KAAA,MAAA,EAAAG,MAAA,EAAAC,KAAA,EAAAC,OAAA,CAAA,CAAA,OAAA,IAAA,EAAA,kBAAA,OAAA,QAAA,UAAA,YAAA,SAAA,cAAA,MAAA,CAAA,EAAAC,SAAA,SAAAC,EAAAC,EAAA,CAAAD,EAAA,ICP1BE,EAAA,EAAA,IAAA,CAAA,EACEC,EAAA,EAAA;CAAA,EACFC,EAAA;oEDKab,CAAa,GAAA",
+  "names": ["LogoComponent", "constructor", "text", "selectors", "inputs", "decls", "vars", "consts", "template", "rf", "ctx", "\u0275\u0275domElementStart", "\u0275\u0275text", "\u0275\u0275domElementEnd"]
+}

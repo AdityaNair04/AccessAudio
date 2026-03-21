@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/modules/settings/settings.component.ts"],
+  "sourcesContent": ["import {SettingsStateModel} from './settings.state';\r\nimport {SetSetting} from './settings.actions';\r\nimport {Store} from '@ngxs/store';\r\nimport {BaseComponent} from '../../components/base/base.component';\r\nimport {Directive, inject} from '@angular/core';\r\nimport {Observable} from 'rxjs';\r\n\r\n@Directive()\r\nexport abstract class BaseSettingsComponent extends BaseComponent {\r\n  protected store = inject(Store);\r\n\r\n  settingsState$: Observable<SettingsStateModel>;\r\n\r\n  constructor() {\r\n    super();\r\n\r\n    this.settingsState$ = this.store.select<SettingsStateModel>(state => state.settings);\r\n  }\r\n\r\n  applySetting(setting: keyof SettingsStateModel, value: any): void {\r\n    this.store.dispatch(new SetSetting(setting, value));\r\n  }\r\n}\r\n"],
+  "mappings": "4KAQA,IAAsBA,GAAsB,IAAA,CAAtC,MAAgBA,UAA8BC,CAAa,CAK/DC,aAAA,CACE,MAAK,EALG,KAAAC,MAAQC,EAAOC,CAAK,EAO5B,KAAKC,eAAiB,KAAKH,MAAMI,OAA2BC,GAASA,EAAMC,QAAQ,CACrF,CAEAC,aAAaC,EAAmCC,EAAU,CACxD,KAAKT,MAAMU,SAAS,IAAIC,EAAWH,EAASC,CAAK,CAAC,CACpD,iDAboBZ,EAAqB,CAAA,+BAArBA,EAAqBe,SAAA,CAAAC,CAAA,CAAA,CAAA,CAAA,SAArBhB,CAAsB,GAAA",
+  "names": ["BaseSettingsComponent", "BaseComponent", "constructor", "store", "inject", "Store", "settingsState$", "select", "state", "settings", "applySetting", "setting", "value", "dispatch", "SetSetting", "features", "\u0275\u0275InheritDefinitionFeature"]
+}

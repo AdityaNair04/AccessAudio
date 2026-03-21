@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/playground/playground.component.scss"],
+  "sourcesContent": ["#video-page-container {\r\n  display: flex;\r\n  height: 100%;\r\n  align-items: center;\r\n  justify-content: center;\r\n}\r\n\r\napp-video {\r\n  border-radius: 8px;\r\n\r\n  height: 720px;\r\n  max-height: 45vw;\r\n\r\n  &.aspect-1-1 {\r\n    width: 720px;\r\n    max-width: 45vw;\r\n  }\r\n\r\n  &.aspect-4-3 {\r\n    min-width: 288px;\r\n    width: 960px;\r\n    max-width: 60vw;\r\n  }\r\n\r\n  &.aspect-16-9 {\r\n    min-width: 384px;\r\n    width: 1200px;\r\n    max-width: 80vw;\r\n  }\r\n\r\n  &.aspect-2-1 {\r\n    min-width: 432px;\r\n    width: 1440px;\r\n    max-width: 90vw;\r\n  }\r\n}\r\n"],
+  "mappings": "AAAA,CAAA,qBACE,QAAA,KACA,OAAA,KACA,YAAA,OACA,gBAAA,OAGF,UAPA,cAQE,IAEA,OAAA,MACA,WAAA,KAEA,SAAA,CAAA,WACE,MAAA,MACA,UAAA,KAGF,SAAA,CAAA,WACE,UAAA,MACA,MAAA,MACA,UAAA,KAGF,SAAA,CAAA,YACE,UAAA,MACA,MAAA,OACA,UAAA,KAGF,SAAA,CAAA,WACE,UAAA,MACA,MAAA,OACA,UAAA",
+  "names": []
+}

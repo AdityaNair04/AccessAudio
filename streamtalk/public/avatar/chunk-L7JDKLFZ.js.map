@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/modules/settings/settings.actions.ts"],
+  "sourcesContent": ["import {SettingsStateModel} from './settings.state';\r\n\r\nexport class SetSetting {\r\n  static readonly type = '[Settings] Set Setting';\r\n\r\n  constructor(\r\n    public setting: keyof SettingsStateModel,\r\n    public value: any\r\n  ) {}\r\n}\r\n"],
+  "mappings": "AAEA,IAAaA,GAAU,IAAA,CAAjB,MAAOA,CAAU,QACL,KAAAC,KAAO,wBAAyB,CAEhDC,YACSC,EACAC,EAAU,CADV,KAAAD,QAAAA,EACA,KAAAC,MAAAA,CACN,SANQJ,CAAU,GAAA",
+  "names": ["SetSetting", "type", "constructor", "setting", "value"]
+}

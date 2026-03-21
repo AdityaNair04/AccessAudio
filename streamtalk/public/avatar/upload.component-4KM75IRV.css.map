@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/translate/signed-to-spoken/upload/upload.component.scss"],
+  "sourcesContent": ["@use '@angular/material' as mat;\r\n@use 'sass:map';\r\n\r\nh3 {\r\n  font-family: 'Google Sans', sans-serif;\r\n  font-size: 24px;\r\n  font-weight: 400;\r\n  line-height: 30px;\r\n  margin: 0;\r\n}\r\n\r\np {\r\n  color: map.get(mat.$m2-light-theme-foreground-palette, secondary-text);\r\n  font-size: 14px;\r\n  font-weight: 400;\r\n  margin-top: 8px;\r\n  margin-bottom: 26px;\r\n\r\n  @media (prefers-color-scheme: dark) {\r\n    color: map.get(mat.$m2-dark-theme-foreground-palette, secondary-text);\r\n  }\r\n}\r\n\r\nbutton {\r\n  font-family: 'Google Sans', sans-serif;\r\n  font-size: 14px;\r\n  font-weight: 500;\r\n  letter-spacing: 0.3px;\r\n}\r\n"],
+  "mappings": "AAGA,GACE,YAAA,WAAA,CAAA,WACA,UAAA,KACA,YAAA,IACA,YAAA,KAJF,OAKE,EAGF,EACE,MAAA,UACA,UAAA,KACA,YAAA,IACA,WAAA,IACA,cAAA,KAEA,OAAA,qBAAA,MAPF,EAQI,MAAA,WAIJ,OACE,YAAA,WAAA,CAAA,WACA,UAAA,KACA,YAAA,IACA,eAAA",
+  "names": []
+}

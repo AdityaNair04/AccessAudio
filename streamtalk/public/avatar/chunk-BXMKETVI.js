@@ -1,0 +1,2 @@
+import{l as t}from"./chunk-YEX4KB3F.js";function s(){return t(this,null,function*(){let a=yield import("./dist-C3RT4WVR.js");if(yield a.ready(),"navigator"in globalThis&&"gpu"in navigator&&(yield import("./dist-RVRXAMXU.js"),yield a.setBackend("webgpu")),a.getBackend()==="cpu"){let{setWasmPaths:i}=yield import("./dist-7GVOMJDV.js");i("assets/models/tfjs-backend-wasm/"),yield a.setBackend("wasm")}return a})}export{s as a};
+//# sourceMappingURL=chunk-BXMKETVI.js.map

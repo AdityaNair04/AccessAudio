@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/translate/pose-viewers/avatar-pose-viewer/avatar-pose-viewer.component.scss"],
+  "sourcesContent": [":host {\r\n  display: block;\r\n}\r\n\r\napp-animation {\r\n  display: block;\r\n  width: 100%;\r\n  height: 100%;\r\n}\r\n\r\npose-viewer {\r\n  display: none;\r\n}\r\n"],
+  "mappings": "AAAA,MACE,QAAA,MAGF,cACE,QAAA,MACA,MAAA,KACA,OAAA,KAGF,YACE,QAAA",
+  "names": []
+}

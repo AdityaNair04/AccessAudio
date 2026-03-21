@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { cloneDeep } from "lodash";
 import { useParams } from "next/navigation";
 
@@ -61,6 +61,8 @@ const Room = () => {
   const [callDuration, setCallDuration] = useState(0);
   const [showTroubleshooter, setShowTroubleshooter] = useState(false);
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
+  const [isAvatarEnabled, setIsAvatarEnabled] = useState(false);
+  const avatarIframeRef = useRef(null);
 
   // Initialize chat functionality
   const {
@@ -93,6 +95,21 @@ const Room = () => {
     // Automatically broadcast Voice captions as soon as an utterance finishes
     sendCaption({ text: finalText, emotion: "Speaking" });
   });
+
+  // Automatically pipe finished transcriptions to the 3D Avatar Angular Application 
+  useEffect(() => {
+    if (isAvatarEnabled && avatarIframeRef.current && captions?.length > 0) {
+      const latestCaption = captions[captions.length - 1];
+      if (latestCaption.text) {
+        // Use postMessage to push the text seamlessly into the Angular NGXS Store without reloading the page
+        console.log("Piping text to 3D Avatar:", latestCaption.text);
+        avatarIframeRef.current.contentWindow.postMessage({
+          type: 'SET_TEXT',
+          text: latestCaption.text
+        }, '*');
+      }
+    }
+  }, [captions, isAvatarEnabled]);
 
   // Call duration timer
   useEffect(() => {
@@ -368,8 +385,34 @@ const Room = () => {
       >
         {/* Main Video Area */}
         <div className="h-full flex flex-col">
+          {/* 3D Avatar Translator Modal Overlay */}
+          {isAvatarEnabled && (
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 w-full max-w-[340px] h-[360px] bg-slate-900/90 backdrop-blur-md border border-slate-700/70 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center px-4 py-2.5 bg-slate-800/80 border-b border-slate-700 shadow-sm">
+                <span className="text-xs uppercase tracking-wider font-bold text-slate-300 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  3D Sign Interpreter
+                </span>
+                <button 
+                  onClick={() => setIsAvatarEnabled(false)}
+                  className="text-slate-400 hover:bg-slate-700/50 hover:text-white transition-colors w-6 h-6 flex items-center justify-center rounded-lg"
+                  title="Close Avatar"
+                >
+                  ✕
+                </button>
+              </div>
+              {/* Angular Subsystem Embedded Execution */}
+              <iframe 
+                ref={avatarIframeRef}
+                src="/avatar/index.html?embed=true" 
+                className="w-full flex-1 border-none bg-slate-900"
+                title="Avatar Interpreter"
+              />
+            </div>
+          )}
+
           {/* Video Grid */}
-          <div className="flex-1 w-full p-4 overflow-hidden">
+          <div className="flex-1 w-full p-4 overflow-hidden relative">
             <SimpleVideoGrid
               players={players}
               highlightedPlayerId={
@@ -420,6 +463,8 @@ const Room = () => {
             onTroubleshoot={() => setShowTroubleshooter(true)}
             isSpeechEnabled={isSpeechEnabled}
             toggleSpeechToText={() => setIsSpeechEnabled(!isSpeechEnabled)}
+            isAvatarEnabled={isAvatarEnabled}
+            toggleAvatar={() => setIsAvatarEnabled(!isAvatarEnabled)}
           />
         )}
 

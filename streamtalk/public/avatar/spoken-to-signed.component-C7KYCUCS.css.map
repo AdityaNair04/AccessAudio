@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/translate/spoken-to-signed/spoken-to-signed.component.scss"],
+  "sourcesContent": ["@use '../../../../theme/breakpoints' as breakpoints;\r\n\r\n:host {\r\n  display: grid;\r\n  width: 100%;\r\n  grid-template-areas: 'spoken signwriting signed';\r\n  grid-template-columns: auto 100px 50%;\r\n\r\n  @media #{breakpoints.$breakpoint-lt-sm} {\r\n    grid-template-areas: 'signed signed' 'spoken signwriting';\r\n    grid-template-columns: auto 100px;\r\n\r\n    app-signed-language-output {\r\n      border-bottom: 1px solid var(--app-divider-color);\r\n    }\r\n  }\r\n\r\n  > *:not(:last-child) {\r\n    border-inline-end: 1px solid var(--app-divider-color);\r\n  }\r\n}\r\n\r\napp-sign-writing {\r\n  @media #{breakpoints.$breakpoint-lt-sm} {\r\n    border: none !important;\r\n    height: 195px;\r\n  }\r\n}\r\n\r\napp-signed-language-output {\r\n  grid-area: signed;\r\n}\r\n"],
+  "mappings": "AAEA,MACE,QAAA,KACA,MAAA,KACA,oBAAA,4BACA,sBAAA,KAAA,MAAA,IAEA,OAAA,YAAA,UAAA,OANF,MAOI,oBAAA,gBAAA,qBACA,sBAAA,KAAA,MAEA,MAAA,2BACE,cAAA,IAAA,MAAA,IAAA,sBAIJ,KAAA,CAAA,CAAA,KAAA,aACE,kBAAA,IAAA,MAAA,IAAA,qBAKF,OAAA,YAAA,UAAA,OADF,iBAEI,OAAA,eACA,OAAA,OAIJ,2BACE,UAAA",
+  "names": []
+}

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/components/base/base.component.ts"],
+  "sourcesContent": ["import {Directive, OnDestroy} from '@angular/core';\r\nimport {Subject} from 'rxjs';\r\n\r\n@Directive()\r\nexport abstract class BaseComponent implements OnDestroy {\r\n  ngUnsubscribe: Subject<void> = new Subject<void>();\r\n\r\n  ngOnDestroy(): void {\r\n    this.ngUnsubscribe.next();\r\n    this.ngUnsubscribe.complete();\r\n  }\r\n}\r\n"],
+  "mappings": "gDAIA,IAAsBA,GAAa,IAAA,CAA7B,MAAgBA,CAAa,CADnCC,aAAA,CAEE,KAAAC,cAA+B,IAAIC,EAEnCC,aAAW,CACT,KAAKF,cAAcG,KAAI,EACvB,KAAKH,cAAcI,SAAQ,CAC7B,iDANoBN,EAAa,CAAA,+BAAbA,CAAa,CAAA,CAAA,SAAbA,CAAa,GAAA",
+  "names": ["BaseComponent", "constructor", "ngUnsubscribe", "Subject", "ngOnDestroy", "next", "complete"]
+}

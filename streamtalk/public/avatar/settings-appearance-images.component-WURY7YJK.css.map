@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/settings/settings-appearance/settings-appearance-images/settings-appearance-images.component.scss"],
+  "sourcesContent": ["#appearance-options {\r\n  display: grid;\r\n  grid-template-columns: repeat(auto-fit, calc(70px * var(--appearance-scale)));\r\n  gap: 1em;\r\n\r\n  button {\r\n    border: 0 solid white; /* For the animation */\r\n    border-radius: 4px;\r\n    width: calc(5em * var(--appearance-scale));\r\n    height: calc(5em * var(--appearance-scale));\r\n    transition: border 0.2s;\r\n\r\n    &.image {\r\n      background-color: transparent;\r\n      background-repeat: no-repeat;\r\n      background-size: cover;\r\n      background-position: center center;\r\n    }\r\n\r\n    &.selected {\r\n      border: 0.3em solid white;\r\n    }\r\n\r\n    &[disabled] {\r\n      filter: grayscale(1);\r\n    }\r\n\r\n    mat-icon {\r\n      scale: var(--appearance-scale);\r\n    }\r\n  }\r\n}\r\n"],
+  "mappings": "AAAA,CAAA,mBACE,QAAA,KACA,sBAAA,OAAA,QAAA,CAAA,KAAA,KAAA,EAAA,IAAA,sBACA,IAAA,IAEA,CALF,mBAKE,OACE,OAAA,EAAA,MAAA,MANJ,cAOI,IACA,MAAA,KAAA,IAAA,EAAA,IAAA,qBACA,OAAA,KAAA,IAAA,EAAA,IAAA,qBACA,WAAA,OAAA,IAEA,CAZJ,mBAYI,MAAA,CAAA,MACE,iBAAA,YACA,kBAAA,UACA,gBAAA,MACA,oBAAA,OAAA,OAGF,CAnBJ,mBAmBI,MAAA,CAAA,SACE,OAAA,KAAA,MAAA,MAGF,CAvBJ,mBAuBI,MAAA,CAAA,UACE,OAAA,UAAA,GAGF,CA3BJ,mBA2BI,OAAA,SACE,MAAA,IAAA",
+  "names": []
+}

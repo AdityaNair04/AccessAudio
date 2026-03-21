@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/components/animation/animation.component.scss"],
+  "sourcesContent": [":host {\r\n  position: absolute;\r\n  width: 100%;\r\n  height: 100%;\r\n}\r\n\r\nmodel-viewer {\r\n  width: 100%;\r\n  height: 100%;\r\n  --poster-color: transparent;\r\n  --progress-mask: transparent;\r\n  --progress-bar-color: var(--ion-color-primary);\r\n}\r\n"],
+  "mappings": "AAAA,MACE,SAAA,SACA,MAAA,KACA,OAAA,KAGF,aACE,MAAA,KACA,OAAA,KACA,gBAAA,YACA,iBAAA,YACA,sBAAA,IAAA",
+  "names": []
+}

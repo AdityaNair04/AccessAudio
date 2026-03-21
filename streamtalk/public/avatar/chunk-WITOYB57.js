@@ -1,0 +1,2 @@
+import{a}from"./chunk-5WWW4Q5H.js";import{a as c}from"./chunk-L7JDKLFZ.js";import{a as n}from"./chunk-EOVNIDS7.js";import{aa as r,kb as s,mb as o}from"./chunk-AGSLYVE3.js";var g=(()=>{class t extends a{constructor(){super(),this.store=r(n),this.settingsState$=this.store.select(e=>e.settings)}applySetting(e,i){this.store.dispatch(new c(e,i))}static{this.\u0275fac=function(i){return new(i||t)}}static{this.\u0275dir=s({type:t,features:[o]})}}return t})();export{g as a};
+//# sourceMappingURL=chunk-WITOYB57.js.map

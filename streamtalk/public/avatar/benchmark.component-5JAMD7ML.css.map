@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/benchmark/benchmark.component.scss"],
+  "sourcesContent": [".container {\r\n  padding: 16px;\r\n}\r\n\r\napp-benchmark-item {\r\n  display: inline-block;\r\n  margin: 0 8px;\r\n}\r\n"],
+  "mappings": "AAAA,CAAA,UAAA,QACE,KAGF,mBACE,QAAA,aALF,OAME,EAAA",
+  "names": []
+}

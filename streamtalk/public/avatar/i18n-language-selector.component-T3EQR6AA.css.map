@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/components/i18n-language-selector/i18n-language-selector.component.scss"],
+  "sourcesContent": ["select {\r\n  font-size: 14px;\r\n  border: none;\r\n  background: transparent;\r\n\r\n  &:focus-visible {\r\n    outline: none;\r\n  }\r\n\r\n  @media (prefers-color-scheme: dark) {\r\n    color: white;\r\n\r\n    * {\r\n      /*\r\n      Only required for Windows, Chrome\r\n      https://github.com/sign/translate/issues/54\r\n       */\r\n      background: black;\r\n    }\r\n  }\r\n}\r\n"],
+  "mappings": "AAAA,OACE,UAAA,KACA,OAAA,KACA,WAAA,YAEA,MAAA,eACE,QAAA,KAGF,OAAA,qBAAA,MATF,OAUI,MAAA,KAEA,OAAA,EAKE,WAAA",
+  "names": []
+}

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/landing/about/about-faq/about-faq.component.scss"],
+  "sourcesContent": ["@use '../../../../../theme/breakpoints' as breakpoints;\r\n\r\n.container {\r\n  display: grid;\r\n  grid-template-columns: 40% 1fr;\r\n  grid-template-rows: 1fr 1fr;\r\n  gap: 32px;\r\n  grid-template-areas:\r\n    'header content'\r\n    'footer content';\r\n\r\n  @media #{breakpoints.$breakpoint-lt-md} {\r\n    display: initial;\r\n  }\r\n}\r\n\r\n.header {\r\n  grid-area: header;\r\n}\r\n\r\nh1 {\r\n  font-weight: bold;\r\n}\r\n\r\nion-accordion-group {\r\n  grid-area: content;\r\n}\r\n\r\n.footer {\r\n  grid-area: footer;\r\n  margin-top: auto;\r\n}\r\n"],
+  "mappings": "AAEA,CAAA,UACE,QAAA,KACA,sBAAA,IAAA,IACA,mBAAA,IAAA,IACA,IAAA,KACA,oBACE,iBAAA,iBAGF,OAAA,YAAA,UAAA,OATF,CAAA,UAUI,QAAA,SAIJ,CAAA,OACE,UAAA,OAGF,GACE,YAAA,IAGF,oBACE,UAAA,QAGF,CAAA,OACE,UAAA,OACA,WAAA",
+  "names": []
+}

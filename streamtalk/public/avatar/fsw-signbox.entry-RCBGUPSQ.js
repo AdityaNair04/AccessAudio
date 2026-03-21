@@ -1,0 +1,2 @@
+import{e as r}from"./chunk-ZSKV2JXM.js";import{b as t,c as e,d as l,g as n}from"./chunk-4QHOFBVJ.js";import"./chunk-YEX4KB3F.js";var a=".sc-fsw-signbox-h{width:100%;height:100%;border-radius:10px;display:block}",b=(()=>{let o=class{constructor(s){n(this,s)}paletteSymbolDropHandler(s){let i=s.target;r(i,this.el)&&console.log(s.detail)}render(){return t(e,null,t("slot",null))}get el(){return l(this)}};return o.style=a,o})();export{b as fsw_signbox};
+//# sourceMappingURL=fsw-signbox.entry-RCBGUPSQ.js.map

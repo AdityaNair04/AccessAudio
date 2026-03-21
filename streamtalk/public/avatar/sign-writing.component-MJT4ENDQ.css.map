@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/translate/signwriting/sign-writing.component.scss"],
+  "sourcesContent": [":host {\r\n  text-align: center;\r\n  overflow-y: auto;\r\n  height: 100%;\r\n  position: relative;\r\n\r\n  color: black;\r\n\r\n  @media (prefers-color-scheme: dark) {\r\n    color: white;\r\n  }\r\n}\r\n\r\n#signs {\r\n  padding: 20px 0;\r\n  width: 100%;\r\n  font-size: 24px;\r\n  position: absolute;\r\n}\r\n\r\nfsw-sign {\r\n  direction: ltr;\r\n  display: block;\r\n  margin: 20px 0;\r\n\r\n  user-select: none;\r\n  -webkit-user-select: none; /* Webkit */\r\n  -moz-user-select: none; /* Firefox */\r\n  -ms-user-select: none; /* Edge*/\r\n  -webkit-touch-callout: none; /* Safari Touch */\r\n}\r\n"],
+  "mappings": "AAAA,MACE,WAAA,OACA,WAAA,KACA,OAAA,KACA,SAAA,SAEA,MAAA,KAEA,OAAA,qBAAA,MARF,MASI,MAAA,MAIJ,CAAA,MAbA,QAcE,KAAA,EACA,MAAA,KACA,UAAA,KACA,SAAA,SAGF,SACE,UAAA,IACA,QAAA,MAtBF,OAuBE,KAAA,EAEA,YAAA,KACA,oBAAA,KACA,iBAAA,KACA,gBAAA,KACA,sBAAA",
+  "names": []
+}

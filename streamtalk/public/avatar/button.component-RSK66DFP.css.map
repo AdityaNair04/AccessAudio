@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/translate/input/button/button.component.scss"],
+  "sourcesContent": ["ion-button {\r\n  --border-width: 1px;\r\n  text-transform: none;\r\n\r\n  &.selected {\r\n    border-radius: var(--border-radius);\r\n    background-color: rgba(166, 66, 244, 0.08);\r\n  }\r\n\r\n  --ion-color-base: var(--ion-color-primary-accessible-text) !important;\r\n}\r\n"],
+  "mappings": "AAAA,WACE,gBAAA,IACA,eAAA,KAEA,UAAA,CAAA,SACE,cAAA,IAAA,iBACA,iBAAA,UANJ,WASE,kBAAA,IAAA",
+  "names": []
+}

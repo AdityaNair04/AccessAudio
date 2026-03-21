@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/components/logo/logo.component.scss"],
+  "sourcesContent": [":host {\r\n  display: flex;\r\n  align-items: end;\r\n  font-size: 1.2em;\r\n  gap: 8px;\r\n}\r\n\r\na {\r\n  display: flex;\r\n  align-items: end;\r\n  color: unset;\r\n  text-decoration: none;\r\n}\r\n\r\nimg {\r\n  height: 1em;\r\n  display: block;\r\n}\r\n\r\n.nagish-logo {\r\n  img {\r\n    height: 1em;\r\n  }\r\n}\r\n"],
+  "mappings": "AAAA,MACE,QAAA,KACA,YAAA,IACA,UAAA,MACA,IAAA,IAGF,EACE,QAAA,KACA,YAAA,IACA,MAAA,MACA,gBAAA,KAGF,IACE,OAAA,IACA,QAAA,MAIA,CAAA,YAAA,IACE,OAAA",
+  "names": []
+}

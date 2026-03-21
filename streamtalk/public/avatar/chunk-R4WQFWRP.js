@@ -1,0 +1,4 @@
+import{Hb as o,Ib as i,hc as a,ib as n}from"./chunk-AGSLYVE3.js";var p=(()=>{class t{constructor(){this.text=" "}static{this.\u0275fac=function(e){return new(e||t)}}static{this.\u0275cmp=n({type:t,selectors:[["app-logo"]],inputs:{text:"text"},decls:2,vars:0,consts:[["href","/",2,"text-decoration","none","color","inherit","font-size","1.5rem","font-weight","bold"]],template:function(e,c){e&1&&(o(0,"a",0),a(1,` AccessAudio
+`),i())},styles:[`[_nghost-%COMP%]{display:flex;align-items:end;font-size:1.2em;gap:8px}a[_ngcontent-%COMP%]{display:flex;align-items:end;color:unset;text-decoration:none}img[_ngcontent-%COMP%]{height:1em;display:block}.nagish-logo[_ngcontent-%COMP%]   img[_ngcontent-%COMP%]{height:1em}
+/*# sourceMappingURL=logo.component-V5I3CJXZ.css.map */`]})}}return t})();export{p as a};
+//# sourceMappingURL=chunk-R4WQFWRP.js.map

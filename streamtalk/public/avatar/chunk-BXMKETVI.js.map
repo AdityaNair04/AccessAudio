@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/core/services/tfjs/tfjs.loader.ts"],
+  "sourcesContent": ["export async function loadTFJS() {\r\n  const tf = await import(/* webpackChunkName: \"@tensorflow/tfjs\" */ '@tensorflow/tfjs');\r\n  await tf.ready();\r\n\r\n  if ('navigator' in globalThis && 'gpu' in navigator) {\r\n    await import(/* webpackChunkName: \"@tensorflow/tfjs-backend-webgpu\" */ '@tensorflow/tfjs-backend-webgpu');\r\n    await tf.setBackend('webgpu');\r\n  }\r\n\r\n  // defaults to webgl or cpu, need to load wasm explicitly\r\n  if (tf.getBackend() === 'cpu') {\r\n    const {setWasmPaths} = await import(\r\n      /* webpackChunkName: \"@tensorflow/tfjs-backend-wasm\" */ '@tensorflow/tfjs-backend-wasm'\r\n    );\r\n    setWasmPaths('assets/models/tfjs-backend-wasm/');\r\n    await tf.setBackend('wasm');\r\n  }\r\n\r\n  return tf;\r\n}\r\n"],
+  "mappings": "wCAAA,SAAsBA,GAAQ,QAAAC,EAAA,sBAC5B,IAAMC,EAAK,KAAM,QAAkD,oBAAkB,EASrF,GARA,MAAMA,EAAGC,MAAK,EAEV,cAAeC,YAAc,QAASC,YACxC,KAAM,QAAiE,oBAAiC,EACxG,MAAMH,EAAGI,WAAW,QAAQ,GAI1BJ,EAAGK,WAAU,IAAO,MAAO,CAC7B,GAAM,CAACC,aAAAA,CAAY,EAAI,KAAM,QAC6B,oBAA+B,EAEzFA,EAAa,kCAAkC,EAC/C,MAAMN,EAAGI,WAAW,MAAM,CAC5B,CAEA,OAAOJ,CACT",
+  "names": ["loadTFJS", "__async", "tf", "ready", "globalThis", "navigator", "setBackend", "getBackend", "setWasmPaths"]
+}

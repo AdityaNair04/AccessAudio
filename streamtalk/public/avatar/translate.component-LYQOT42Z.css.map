@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/translate/translate.component.scss"],
+  "sourcesContent": ["app-translate-mobile,\r\napp-translate-desktop {\r\n  display: contents;\r\n}\r\n"],
+  "mappings": "AAAA,qBAAA,sBAEE,QAAA",
+  "names": []
+}

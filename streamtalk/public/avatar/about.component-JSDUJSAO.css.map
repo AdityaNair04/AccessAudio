@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/landing/about/about.component.scss"],
+  "sourcesContent": ["@use '../../../../theme/breakpoints' as breakpoints;\r\n\r\n:host > * {\r\n  display: block;\r\n  padding: 50px;\r\n  padding-top: 0;\r\n\r\n  @media #{breakpoints.$breakpoint-lt-md} {\r\n    padding: 50px 25px;\r\n  }\r\n}\r\n\r\napp-stores {\r\n  text-align: center;\r\n}\r\n"],
+  "mappings": "AAEA,KAAA,CAAA,EACE,QAAA,MADF,QAGE,EADA,UAGA,OAAA,YAAA,UAAA,OALF,KAAA,CAAA,EAAA,QAMI,KAAA,MAIJ,WACE,WAAA",
+  "names": []
+}

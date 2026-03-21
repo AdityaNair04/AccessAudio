@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/translate/pose-viewers/viewer-selector/viewer-selector.component.scss"],
+  "sourcesContent": ["ion-fab#viewer-selector {\r\n  top: 0;\r\n  right: 0;\r\n}\r\n\r\n::ng-deep html[dir='rtl'] ion-fab#viewer-selector {\r\n  right: auto;\r\n  left: 0;\r\n}\r\n"],
+  "mappings": "AAAA,OAAA,CAAA,gBACE,IAAA,EACA,MAAA,EAGF,UAAA,IAAA,CAAA,SAAA,OAAA,CALA,gBAME,MAAA,KACA,KAAA",
+  "names": []
+}

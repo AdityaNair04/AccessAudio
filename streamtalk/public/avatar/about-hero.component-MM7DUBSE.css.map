@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/landing/about/about-hero/about-hero.component.scss"],
+  "sourcesContent": ["@use '../../../../../theme/breakpoints' as breakpoints;\r\n\r\n:host {\r\n  @media #{breakpoints.$breakpoint-gt-sm} {\r\n    padding: 200px 50px !important;\r\n  }\r\n}\r\n\r\n#hero-grid {\r\n  display: grid;\r\n  grid-auto-flow: column;\r\n  grid-auto-columns: 1fr;\r\n  gap: 32px;\r\n\r\n  align-items: center;\r\n  margin: auto;\r\n\r\n  max-width: 1200px;\r\n\r\n  @media #{breakpoints.$breakpoint-lt-md} {\r\n    grid-auto-flow: row;\r\n  }\r\n}\r\n\r\nh1 {\r\n  font-size: 3em;\r\n\r\n  @media #{breakpoints.$breakpoint-lt-md} {\r\n    font-size: 2.5em;\r\n  }\r\n\r\n  @media #{breakpoints.$breakpoint-lt-sm} {\r\n    font-size: 2em;\r\n  }\r\n\r\n  span {\r\n    color: var(--ion-color-primary-accessible-text);\r\n  }\r\n}\r\n\r\np {\r\n  font-size: 1.25em;\r\n  line-height: 1.5em;\r\n  color: var(--ion-color-dark);\r\n}\r\n\r\nimg {\r\n  width: 100%;\r\n  border-radius: 16px;\r\n  border: 1px solid var(--ion-color-light);\r\n}\r\n\r\nion-button {\r\n  text-transform: none;\r\n}\r\n"],
+  "mappings": "AAGE,OAAA,YAAA,UAAA,OADF,MACE,QACE,MAAA,gBAIJ,CAAA,UACE,QAAA,KACA,eAAA,OACA,kBAAA,IACA,IAAA,KAEA,YAAA,OAXA,OAYA,KAEA,UAAA,OAEA,OAAA,YAAA,UAAA,OAXF,CAAA,UAYI,eAAA,KAIJ,GACE,UAAA,IAEA,OAAA,YAAA,UAAA,OAHF,GAII,UAAA,OAGF,OAAA,YAAA,UAAA,OAPF,GAQI,UAAA,KAGF,GAAA,KACE,MAAA,IAAA,qCAIJ,EACE,UAAA,OACA,YAAA,MACA,MAAA,IAAA,kBAGF,IACE,MAAA,KA5CA,cA6CA,KACA,OAAA,IAAA,MAAA,IAAA,mBAGF,WACE,eAAA",
+  "names": []
+}

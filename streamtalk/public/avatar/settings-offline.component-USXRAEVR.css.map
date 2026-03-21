@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/settings/settings-offline/settings-offline.component.scss"],
+  "sourcesContent": ["mat-tree {\r\n  background: none;\r\n}\r\n\r\n.node-label {\r\n  flex: 1;\r\n  overflow: hidden;\r\n  text-overflow: ellipsis;\r\n  white-space: nowrap;\r\n}\r\n\r\n.folder {\r\n  display: flex;\r\n  align-items: center;\r\n}\r\n\r\nmat-progress-spinner {\r\n  margin: 0 10px;\r\n}\r\n\r\nmat-nested-tree-node mat-nested-tree-node {\r\n  display: block;\r\n}\r\n\r\nmat-nested-tree-node mat-nested-tree-node,\r\nmat-nested-tree-node mat-tree-node {\r\n  padding-inline-start: 20px;\r\n}\r\n"],
+  "mappings": "AAAA,SACE,WAAA,KAGF,CAAA,WACE,KAAA,EACA,SAAA,OACA,cAAA,SACA,YAAA,OAGF,CAAA,OACE,QAAA,KACA,YAAA,OAGF,qBAhBA,OAiBE,EAAA,KAGF,qBAAA,qBACE,QAAA,MAGF,qBAAA,qBAAA,qBAAA,cAEE,qBAAA",
+  "names": []
+}

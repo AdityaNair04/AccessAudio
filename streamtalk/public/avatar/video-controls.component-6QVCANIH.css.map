@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/components/video/video-controls/video-controls.component.scss"],
+  "sourcesContent": ["ion-fab {\r\n  position: absolute;\r\n  right: 16px;\r\n  bottom: 0;\r\n  margin: 0 6px;\r\n\r\n  ion-fab-button.transparent {\r\n    --background: transparent;\r\n    --box-shadow: 0 0 0 1px inset white;\r\n  }\r\n}\r\n"],
+  "mappings": "AAAA,QACE,SAAA,SACA,MAAA,KACA,OAAA,EAHF,OAIE,EAAA,IAEA,QAAA,cAAA,CAAA,YACE,cAAA,YACA,cAAA,EAAA,EAAA,EAAA,IAAA,MAAA",
+  "names": []
+}

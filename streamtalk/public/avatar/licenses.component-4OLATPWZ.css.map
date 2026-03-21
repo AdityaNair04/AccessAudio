@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/landing/licenses/licenses.component.scss"],
+  "sourcesContent": [":host {\r\n  max-width: 960px;\r\n  display: block;\r\n  margin: 8px auto;\r\n}\r\n\r\nmat-tree-node {\r\n  :nth-child(2) {\r\n    flex: 1;\r\n    overflow: hidden;\r\n    text-overflow: ellipsis;\r\n    white-space: nowrap;\r\n  }\r\n\r\n  margin-inline-end: 40px;\r\n}\r\n"],
+  "mappings": "AAAA,MACE,UAAA,MACA,QAAA,MAFF,OAGE,IAAA,KAIA,cAAA,cACE,KAAA,EACA,SAAA,OACA,cAAA,SACA,YAAA,OALJ,cAQE,kBAAA",
+  "names": []
+}

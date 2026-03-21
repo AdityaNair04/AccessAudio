@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/translate/language-selectors/language-selectors.component.scss"],
+  "sourcesContent": [":host {\r\n  display: flex;\r\n\r\n  &.spoken-to-signed {\r\n    flex-direction: row-reverse;\r\n  }\r\n}\r\n\r\napp-language-selector {\r\n  width: calc(50% - 24px);\r\n}\r\n\r\n#swap-languages {\r\n  height: 48px;\r\n  margin: 0;\r\n\r\n  &[disabled] {\r\n    opacity: 0.5;\r\n  }\r\n}\r\n"],
+  "mappings": "AAAA,MACE,QAAA,KAEA,KAAA,CAAA,iBACE,eAAA,YAIJ,sBACE,MAAA,KAAA,IAAA,EAAA,MAGF,CAAA,eACE,OAAA,KAbF,OAcE,EAEA,CAJF,cAIE,CAAA,UACE,QAAA",
+  "names": []
+}

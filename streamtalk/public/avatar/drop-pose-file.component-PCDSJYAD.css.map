@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/translate/drop-pose-file/drop-pose-file.component.scss"],
+  "sourcesContent": [":host.hovering {\r\n  filter: blur(3px);\r\n}\r\n"],
+  "mappings": "AAAA,KAAA,CAAA,SACE,OAAA,KAAA",
+  "names": []
+}

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/theme/fonts/poppins.css", "src/app/components/announcement-banner/announcement-banner.component.scss"],
+  "sourcesContent": ["@font-face {\r\n  font-family: 'Poppins';\r\n  font-style: normal;\r\n  font-weight: 400;\r\n  font-display: swap;\r\n  src: url(https://fonts.gstatic.com/s/poppins/v24/pxiEyp8kv8JHgFVrJJfecnFHGPc.woff2) format('woff2');\r\n}\r\n", "@forward '../../../theme/fonts/poppins.css';\r\n\r\nion-toolbar {\r\n  --ion-color-base: #e9ceff !important;\r\n}\r\n\r\n.announcement-content {\r\n  align-items: center;\r\n  display: flex;\r\n  gap: 16px;\r\n  justify-content: center;\r\n}\r\n\r\nion-title {\r\n  text-align: center;\r\n  font-family: Poppins;\r\n  color: black;\r\n}\r\n\r\nion-button {\r\n  --ion-color-primary: white;\r\n  --ion-color-primary-contrast: #e9ceff;\r\n  color: black;\r\n}\r\n\r\nion-title,\r\nion-button {\r\n  font-size: 16px;\r\n}\r\n"],
+  "mappings": "AAAA,WACE,YAAA,QACA,WAAA,OACA,YAAA,IACA,aAAA,KACA,IAAA,+EAAA,OAAA,SCHF,YACE,kBAAA,mBAGF,CAAA,qBACE,YAAA,OACA,QAAA,KACA,IAAA,KACA,gBAAA,OAGF,UACE,WAAA,OACA,YAAA,QACA,MAAA,KAGF,WACE,qBAAA,MACA,8BAAA,QACA,MAAA,KAGF,UAAA,WAEE,UAAA",
+  "names": []
+}

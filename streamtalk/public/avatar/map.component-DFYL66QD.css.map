@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/components/map/map.component.scss"],
+  "sourcesContent": [":host,\r\ndiv {\r\n  width: 100%;\r\n  height: 100%;\r\n  background-color: transparent;\r\n}\r\n"],
+  "mappings": "AAAA,MAAA,IAEE,MAAA,KACA,OAAA,KACA,iBAAA",
+  "names": []
+}

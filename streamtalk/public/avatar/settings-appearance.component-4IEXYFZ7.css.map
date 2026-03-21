@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/settings/settings-appearance/settings-appearance.component.scss"],
+  "sourcesContent": ["app-settings-appearance-images,\r\np {\r\n  padding: 1em;\r\n  display: block;\r\n}\r\n"],
+  "mappings": "AAAA,+BAAA,EAAA,QAEE,IACA,QAAA",
+  "names": []
+}

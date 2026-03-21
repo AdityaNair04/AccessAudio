@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/landing/contribute/contribute.component.scss"],
+  "sourcesContent": ["@use '../../../../theme/breakpoints' as breakpoints;\r\n\r\n:host {\r\n  padding: 34px 0;\r\n  display: flex;\r\n  flex-direction: column;\r\n  flex: 1;\r\n}\r\n\r\n.container {\r\n  flex: 1;\r\n}\r\n\r\n#contribute-header {\r\n  padding: 16px;\r\n}\r\n\r\n.cards-container {\r\n  ion-card {\r\n    display: flex;\r\n    flex-direction: column;\r\n  }\r\n\r\n  ion-card-content {\r\n    flex-grow: 1;\r\n  }\r\n\r\n  ion-card-title {\r\n    display: flex;\r\n    align-items: center;\r\n    gap: 0.5em;\r\n  }\r\n\r\n  ion-button {\r\n    color: var(--ion-color-primary-accessible-text);\r\n  }\r\n}\r\n"],
+  "mappings": "AAEA,cACE,KAAA,EACA,QAAA,KACA,eAAA,OACA,KAAA,EAGF,CAAA,UACE,KAAA,EAGF,CAAA,kBAXA,QAYE,KAIA,CAAA,gBAAA,SACE,QAAA,KACA,eAAA,OAGF,CALA,gBAKA,iBACE,UAAA,EAGF,CATA,gBASA,eACE,QAAA,KACA,YAAA,OACA,IAAA,KAGF,CAfA,gBAeA,WACE,MAAA,IAAA",
+  "names": []
+}

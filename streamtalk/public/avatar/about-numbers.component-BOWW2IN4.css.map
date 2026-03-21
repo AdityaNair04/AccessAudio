@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/landing/about/about-numbers/about-numbers.component.scss"],
+  "sourcesContent": ["@use '../../../../../theme/breakpoints' as breakpoints;\r\n\r\nh2 {\r\n  text-align: center;\r\n}\r\n\r\n.cards-container {\r\n  display: grid;\r\n  grid-template-columns: repeat(2, 1fr);\r\n\r\n  @media #{breakpoints.$breakpoint-lt-md} {\r\n    grid-template-columns: repeat(2, 1fr);\r\n  }\r\n\r\n  @media #{breakpoints.$breakpoint-lt-sm} {\r\n    grid-template-columns: 1fr;\r\n  }\r\n}\r\n\r\nion-card-title {\r\n  display: flex;\r\n  align-items: center;\r\n\r\n  a {\r\n    flex-grow: 1;\r\n    text-align: end;\r\n  }\r\n}\r\n"],
+  "mappings": "AAEA,GACE,WAAA,OAGF,CAAA,gBACE,QAAA,KACA,sBAAA,OAAA,CAAA,CAAA,KAEA,OAAA,YAAA,UAAA,OAJF,CAAA,gBAKI,sBAAA,OAAA,CAAA,CAAA,MAGF,OAAA,YAAA,UAAA,OARF,CAAA,gBASI,sBAAA,KAIJ,eACE,QAAA,KACA,YAAA,OAEA,eAAA,EACE,UAAA,EACA,WAAA",
+  "names": []
+}

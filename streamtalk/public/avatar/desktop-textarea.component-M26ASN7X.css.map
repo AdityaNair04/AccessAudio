@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/translate/spoken-to-signed/spoken-language-input/desktop-textarea/desktop-textarea.component.scss"],
+  "sourcesContent": [":host {\r\n  position: relative;\r\n  display: block;\r\n  width: 100%;\r\n  height: calc(100% - 40px);\r\n}\r\n\r\n* {\r\n  direction: unset; /* Important for initial cursor position */\r\n  // unicode-bidi: plaintext;\r\n  font-family: Roboto, RobotoDraft, Helvetica, Arial, sans-serif;\r\n  font-size: 24px;\r\n  line-height: 32px;\r\n}\r\n\r\ntextarea#desktop {\r\n  background-color: transparent;\r\n  color: inherit;\r\n  border: none;\r\n  resize: none;\r\n  outline: none;\r\n  width: 100%;\r\n  height: 100%;\r\n}\r\n\r\n#sentences-overlay {\r\n  position: absolute;\r\n  color: transparent;\r\n  cursor: text;\r\n  white-space: pre-wrap;\r\n  pointer-events: none;\r\n  top: 0;\r\n  padding: 2px; // Default textarea padding\r\n\r\n  span {\r\n    pointer-events: all;\r\n\r\n    &.hover {\r\n      border-bottom: 1px solid var(--ion-color-warning-tint);\r\n      pointer-events: none;\r\n    }\r\n  }\r\n}\r\n"],
+  "mappings": "AAAA,MACE,SAAA,SACA,QAAA,MACA,MAAA,KACA,OAAA,KAAA,KAAA,EAAA,MAGF,EACE,UAAA,MAEA,YAAA,MAAA,CAAA,WAAA,CAAA,SAAA,CAAA,KAAA,CAAA,WACA,UAAA,KACA,YAAA,KAGF,QAAA,CAAA,QACE,iBAAA,YACA,MAAA,QACA,OAAA,KACA,OAAA,KACA,QAAA,KACA,MAAA,KACA,OAAA,KAGF,CAAA,kBACE,SAAA,SACA,MAAA,YACA,OAAA,KACA,YAAA,SACA,eAAA,KACA,IAAA,EA/BF,QAgCE,IAEA,CATF,kBASE,KACE,eAAA,IAEA,CAZJ,kBAYI,IAAA,CAAA,MACE,cAAA,IAAA,MAAA,IAAA,0BACA,eAAA",
+  "names": []
+}

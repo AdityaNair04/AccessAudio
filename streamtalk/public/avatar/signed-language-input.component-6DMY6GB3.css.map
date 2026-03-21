@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/translate/signed-to-spoken/signed-language-input/signed-language-input.component.scss"],
+  "sourcesContent": ["ion-toolbar {\r\n  --background: transparent;\r\n  height: 5em;\r\n}\r\n\r\nion-title {\r\n  text-align: center;\r\n\r\n  ion-fab-button {\r\n    margin: auto;\r\n    --box-shadow: none;\r\n\r\n    ion-icon {\r\n      font-size: 5em;\r\n    }\r\n  }\r\n}\r\n"],
+  "mappings": "AAAA,YACE,cAAA,YACA,OAAA,IAGF,UACE,WAAA,OAEA,UAAA,eARF,OASI,KACA,cAAA,KAEA,UAAA,eAAA,SACE,UAAA",
+  "names": []
+}

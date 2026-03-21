@@ -1,0 +1,2 @@
+import{a as i}from"./chunk-VWTREW2M.js";import{X as o,aa as n}from"./chunk-AGSLYVE3.js";var c={iw:"he"},s="en",p=(()=>{class t{constructor(){this.translationService=n(i)}languageCode(r){let e=c[r]??r;return this.translationService.spokenLanguages.includes(e)?e:s}static{this.\u0275fac=function(e){return new(e||t)}}static{this.\u0275prov=o({token:t,factory:t.\u0275fac,providedIn:"root"})}}return t})();export{p as a};
+//# sourceMappingURL=chunk-PURVVEYE.js.map
