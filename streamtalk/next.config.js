@@ -20,6 +20,8 @@ const nextConfig = {
     }
     return config;
   },
+  // Next 16 requires turbopack parameter when using custom webpack config
+  turbopack: {},
 };
 
 module.exports = nextConfig;
