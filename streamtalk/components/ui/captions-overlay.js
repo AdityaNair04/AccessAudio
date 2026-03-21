@@ -89,7 +89,7 @@ export default function CaptionsOverlay({ captions, aiStatus, aiBuffer, aiEmotio
             className="flex items-center gap-3 bg-black/70 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-2xl transition-all duration-300 transform translate-y-0 opacity-100 pointer-events-auto hover:bg-black/80"
           >
             <div className="flex-1 text-center font-medium text-lg tracking-wide text-white drop-shadow-md">
-              "{cap.text}"
+              &quot;{cap.text}&quot;
               {cap.emotion && cap.emotion !== "Neutral" && (
                 <span className="ml-2 text-sm text-gray-300 italic opacity-80 border border-white/20 px-2 py-0.5 rounded-full">
                   ({cap.emotion})
