@@ -68,7 +68,7 @@ export default function CaptionsOverlay({ captions, aiStatus, aiBuffer, aiEmotio
                <Mic className="w-3.5 h-3.5 text-blue-400 animate-pulse" /> Subtitling Voice (Local)
              </span>
              <div className="text-blue-400 font-medium text-sm leading-relaxed italic">
-               "{interimTranscript}"
+               &quot;{interimTranscript}&quot;
              </div>
            </div>
         </div>
