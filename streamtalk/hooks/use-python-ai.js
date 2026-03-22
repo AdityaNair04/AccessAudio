@@ -39,19 +39,27 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
         canvas.height = 300;
         const ctx = canvas.getContext("2d");
 
-        const wsUrl = process.env.NEXT_PUBLIC_AI_WS_URL || "ws://localhost:8000/ws";
-        console.log(`🔌 Connecting to AI WebSocket at ${wsUrl}`);
+        // Fallback to Render URL if no env var is set and we are in production
+        const defaultWsUrl = typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
+            ? "wss://accessaudio-7.onrender.com/ws" 
+            : "ws://localhost:8000/ws";
+            
+        const wsUrl = process.env.NEXT_PUBLIC_AI_WS_URL || defaultWsUrl;
+        console.log(`🔌 Attempting to connect to AI WebSocket at: ${wsUrl}`);
+        
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 
         ws.onopen = () => {
-            console.log("✅ Connected to Python AI Backend!");
+            console.log("✅ AI WebSocket Connected");
             setAiStatus("connected");
         };
 
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
+                // console.log("📩 Received from AI:", data.type); // Quiet logs to avoid spam
+                
                 if (data.type === "buffer_update") {
                     setAiBuffer(data.words);
                 } else if (data.type === "emotion_update") {

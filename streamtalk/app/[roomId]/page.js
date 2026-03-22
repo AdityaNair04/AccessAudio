@@ -406,11 +406,13 @@ const Room = () => {
               </div>
               {/* Angular Subsystem Embedded Execution */}
               <iframe 
-                ref={avatarIframeRef}
-                src="/3d-avatar" 
-                className="w-full flex-1 border-none bg-slate-900"
-                title="Avatar Interpreter"
-              />
+              ref={avatarIframeRef}
+              src="/3d-avatar" 
+              className="w-full flex-1 border-none bg-slate-900"
+              title="Avatar Interpreter"
+              allow="camera; microphone; display-capture; clipboard-read; clipboard-write"
+              allowFullScreen
+            />
             </div>
           )}
 
