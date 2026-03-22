@@ -156,14 +156,16 @@ const useChat = (peer, myId, users = {}) => {
       if (dataConnections[peerId]) return;
       
       const channelKey = `${myId}-${peerId}`;
-      const reverseChannelKey = `${peerId}-${myId}`;
-      if (connectionCreationRef.current.has(channelKey) || connectionCreationRef.current.has(reverseChannelKey)) return;
+      if (connectionCreationRef.current.has(channelKey)) return;
 
-      // Always initiate connection to ensure both sides try to connect
-      console.log(`💬 Actively initiating data connection to ${peerId}`);
-      connectionCreationRef.current.add(channelKey);
-      const conn = peer.connect(peerId, { reliable: true });
-      setupDataConnectionEvents(conn, peerId);
+      // Only the structurally "larger" ID actively triggers the outbound connect() call 
+      // preventing race conditions where both peers spam connect() simultaneously
+      if (myId > peerId) {
+        console.log(`💬 Actively initiating data connection to ${peerId}`);
+        connectionCreationRef.current.add(channelKey);
+        const conn = peer.connect(peerId, { reliable: true });
+        setupDataConnectionEvents(conn, peerId);
+      }
     });
   }, [peer, myId, users, dataConnections, setupDataConnectionEvents]);
 
