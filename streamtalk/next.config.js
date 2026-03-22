@@ -34,12 +34,21 @@ const nextConfig = {
       },
       // Ensure absolute path requests from the Angular app (like /assets/...) reach the right folder
       {
+        source: '/avatar/assets/:path*',
+        destination: '/avatar/assets/:path*',
+      },
+      // Fix for holistic/mediapipe model naming convention
+      {
+        source: '/avatar/assets/models_ctor/:path*',
+        destination: '/avatar/assets/models/holistic/:path*',
+      },
+      {
         source: '/assets/:path*',
         destination: '/avatar/assets/:path*',
       },
-      // Handle standard Angular script names that might be requested from the root
+      // Handle standard Angular script and model names that might be requested from the root
       {
-        source: '/:file(main|polyfills|runtime|styles|worker|holistic|three.module|dom|keyboard|ios.transition|md.transition|swipe-back|focus-visible|esm-.*|chunk-.*|dist-.*|index7-.*|index3-.*|status-tap|input-shims|blob_writer-.*|fsw-.*|sgnw-.*|translate.component-.*|loader-.*|ion-icon.entry-.*|model-viewer-.*|pose-viewer.entry-.*|playground.component-.*|benchmark.component-.*|map.component-.*|landing.routes-.*|settings.routes-.*|web-.*|text_bundle-.*|ngsw-worker|safety-worker|worker-basic.min|app-.*).:ext(js|css|json|map|svg|png|jpg|jpeg|gif|woff|woff2|ttf|eot)',
+        source: '/:file(main|polyfills|runtime|styles|worker|holistic|three.module|dom|keyboard|ios.transition|md.transition|swipe-back|focus-visible|esm-.*|chunk-.*|dist-.*|index7-.*|index3-.*|status-tap|input-shims|blob_writer-.*|fsw-.*|sgnw-.*|translate.component-.*|loader-.*|ion-icon.entry-.*|model-viewer-.*|pose-viewer.entry-.*|playground.component-.*|benchmark.component-.*|map.component-.*|landing.routes-.*|settings.routes-.*|web-.*|text_bundle-.*|ngsw-worker|safety-worker|worker-basic.min|app-.*).:ext(js|css|json|map|svg|png|jpg|jpeg|gif|woff|woff2|ttf|eot|wasm|tflite|bin|data|binarypb)',
         destination: '/avatar/:file.:ext',
       }
     ];

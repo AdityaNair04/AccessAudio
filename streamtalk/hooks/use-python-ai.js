@@ -34,9 +34,9 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
         video.play().catch(e => console.warn("AI Video play failed:", e));
 
         const canvas = document.createElement("canvas");
-        // Keep resolution extremely low to optimize base64 websocket bandwidth
-        canvas.width = 300; 
-        canvas.height = 300;
+        // Keep resolution extremely low to optimize memory on both client and Render backend
+        canvas.width = 224; 
+        canvas.height = 224;
         const ctx = canvas.getContext("2d");
 
         // Fallback to Render URL if no env var is set and we are in production
