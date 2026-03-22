@@ -3,7 +3,7 @@ import { cloneDeep } from "lodash";
 
 /**
  * Custom hook for managing chat functionality within WebRTC peer connections
- * Integrates with existing PeerJS connections to add real-time messaging
+ * Integrates with existing PeerJS connections using native DataConnections
  * 
  * @param {Object} peer - PeerJS instance
  * @param {string} myId - Current user's peer ID
@@ -11,21 +11,15 @@ import { cloneDeep } from "lodash";
  * @returns {Object} Chat functionality and state
  */
 const useChat = (peer, myId, users = {}) => {
-  // Chat messages state
   const [messages, setMessages] = useState([]);
-  // Captions state
   const [captions, setCaptions] = useState([]);
-  // Data channels for each peer
-  const [dataChannels, setDataChannels] = useState({});
-  // Track which peers have data channels established
+  
+  // Track active PeerJS DataConnections natively 
+  const [dataConnections, setDataConnections] = useState({});
   const [connectedPeers, setConnectedPeers] = useState(new Set());
-  // Ref to prevent duplicate channel creation
-  const channelCreationRef = useRef(new Set());
+  
+  const connectionCreationRef = useRef(new Set());
 
-  /**
-   * Add a message to the chat
-   * @param {Object} message - Message object
-   */
   const addMessage = useCallback((message) => {
     const newMessage = {
       id: message.id || `${Date.now()}-${Math.random()}`,
@@ -37,28 +31,18 @@ const useChat = (peer, myId, users = {}) => {
     };
 
     setMessages(prev => {
-      // Prevent duplicate messages
-      const exists = prev.some(msg => msg.id === newMessage.id);
-      if (exists) return prev;
+      if (prev.some(msg => msg.id === newMessage.id)) return prev;
       return [...prev, newMessage];
     });
   }, [myId]);
 
-  /**
-   * Add a caption directly to the state
-   */
   const addCaption = useCallback((caption) => {
     setCaptions(prev => {
-      // Keep only the last 3-4 captions to avoid cluttering memory
       const newCaptions = [...prev, caption];
       return newCaptions.slice(-5);
     });
   }, []);
 
-  /**
-   * Send a text message to all connected peers
-   * @param {string} messageText - The message text to send
-   */
   const sendMessage = useCallback((messageText) => {
     if (!messageText || !messageText.trim()) return false;
 
@@ -71,29 +55,18 @@ const useChat = (peer, myId, users = {}) => {
       type: 'chat-message'
     };
 
-    // Add to local messages immediately
     addMessage(message);
 
-    // Send to all connected peers
     let sentCount = 0;
-    Object.entries(dataChannels).forEach(([peerId, channel]) => {
-      if (channel && channel.readyState === 'open') {
-        try {
-          channel.send(JSON.stringify(message));
-          sentCount++;
-        } catch (error) {
-          console.error(`Failed to send message to peer ${peerId}:`, error);
-        }
+    Object.entries(dataConnections).forEach(([peerId, conn]) => {
+      if (conn && conn.open) {
+        conn.send(message);
+        sentCount++;
       }
     });
-
-    console.log(`Message sent to ${sentCount} peers`);
     return sentCount > 0;
-  }, [myId, dataChannels, addMessage]);
+  }, [myId, dataConnections, addMessage]);
 
-  /**
-   * Send a caption to all connected peers
-   */
   const sendCaption = useCallback((captionData) => {
     if (!captionData) return false;
 
@@ -105,136 +78,102 @@ const useChat = (peer, myId, users = {}) => {
       type: 'caption'
     };
 
-    // Add locally
     addCaption(captionMsg);
 
-    // Send to all
     let sentCount = 0;
-    Object.entries(dataChannels).forEach(([peerId, channel]) => {
-      if (channel && channel.readyState === 'open') {
-        try {
-          channel.send(JSON.stringify(captionMsg));
-          sentCount++;
-        } catch (error) {
-          console.error(`Failed to send caption to peer ${peerId}:`, error);
-        }
+    Object.entries(dataConnections).forEach(([peerId, conn]) => {
+      if (conn && conn.open) {
+        conn.send(captionMsg);
+        sentCount++;
       }
     });
 
     return sentCount > 0;
-  }, [myId, dataChannels, addCaption]);
+  }, [myId, dataConnections, addCaption]);
 
-  /**
-   * Handle incoming data channel messages
-   * @param {MessageEvent} event - The message event from data channel
-   */
-  const handleIncomingMessage = useCallback((event) => {
+  const handleIncomingData = useCallback((data) => {
     try {
-      const data = JSON.parse(event.data);
-      
       if (data.type === 'chat-message') {
-        // Validate message structure
-        if (data.senderId && data.text && data.id) {
-          addMessage(data);
-        }
+        if (data.senderId && data.text && data.id) addMessage(data);
       } else if (data.type === 'caption') {
-        // Handle incoming captions
-        if (data.senderId && data.text) {
-          addCaption(data);
-        }
+        if (data.senderId && data.text) addCaption(data);
       }
     } catch (error) {
-      console.error('Error parsing incoming message:', error);
+      console.error('Error handling incoming data:', error);
     }
-  }, [addMessage]);
+  }, [addMessage, addCaption]);
 
-  /**
-   * Create and setup a data channel for a peer
-   * @param {string} peerId - The peer ID
-   * @param {RTCPeerConnection} peerConnection - The RTCPeerConnection instance
-   * @param {boolean} isInitiator - Whether this peer should create the channel
-   */
-  const setupDataChannel = useCallback((peerId, peerConnection, isInitiator = false) => {
-    // Prevent duplicate channel creation
-    const channelKey = `${myId}-${peerId}`;
-    if (channelCreationRef.current.has(channelKey)) {
-      return;
-    }
-    channelCreationRef.current.add(channelKey);
+  // Bind events to a verified DataConnection seamlessly
+  const setupDataConnectionEvents = useCallback((conn, peerId) => {
+    conn.on('open', () => {
+      console.log(`💬 Data connection natively opened with peer ${peerId}`);
+      setDataConnections(prev => ({ ...prev, [peerId]: conn }));
+      setConnectedPeers(prev => new Set([...prev, peerId]));
+    });
 
-    let dataChannel;
+    conn.on('data', handleIncomingData);
 
-    const setupChannelEvents = (channel) => {
-      channel.onopen = () => {
-        console.log(`💬 Data channel opened with peer ${peerId}`);
-        setDataChannels(prev => ({ ...prev, [peerId]: channel }));
-        setConnectedPeers(prev => new Set([...prev, peerId]));
-      };
+    conn.on('close', () => {
+      console.log(`💬 Data connection closed with peer ${peerId}`);
+      setDataConnections(prev => {
+        const updated = cloneDeep(prev);
+        delete updated[peerId];
+        return updated;
+      });
+      setConnectedPeers(prev => {
+        const updated = new Set(prev);
+        updated.delete(peerId);
+        return updated;
+      });
+      connectionCreationRef.current.delete(`${myId}-${peerId}`);
+    });
 
-      channel.onclose = () => {
-        console.log(`💬 Data channel closed with peer ${peerId}`);
-        setDataChannels(prev => {
-          const updated = cloneDeep(prev);
-          delete updated[peerId];
-          return updated;
-        });
-        setConnectedPeers(prev => {
-          const updated = new Set(prev);
-          updated.delete(peerId);
-          return updated;
-        });
-        channelCreationRef.current.delete(channelKey);
-      };
+    conn.on('error', (err) => {
+      console.error(`💬 Data connection error with peer ${peerId}:`, err);
+    });
+  }, [myId, handleIncomingData]);
 
-      channel.onerror = (error) => {
-        console.error(`💬 Data channel error with peer ${peerId}:`, error);
-      };
+  // 1. Listen for ALL INCOMING DataConnections from other remote peers globally
+  useEffect(() => {
+    if (!peer) return;
 
-      channel.onmessage = handleIncomingMessage;
+    const handleConnection = (conn) => {
+      console.log(`💬 Received incoming data connection from ${conn.peer}`);
+      setupDataConnectionEvents(conn, conn.peer);
     };
 
-    if (isInitiator) {
-      // Create data channel as the initiator
-      try {
-        dataChannel = peerConnection.createDataChannel('chat', {
-          ordered: true,
-          maxRetransmits: 3
-        });
-        setupChannelEvents(dataChannel);
-        console.log(`💬 Created data channel for peer ${peerId}`);
-      } catch (error) {
-        console.error(`💬 Failed to create data channel for peer ${peerId}:`, error);
-        channelCreationRef.current.delete(channelKey);
-      }
-    } else {
-      // Listen for incoming data channel
-      const handleDataChannel = (event) => {
-        dataChannel = event.channel;
-        if (dataChannel.label === 'chat') {
-          setupChannelEvents(dataChannel);
-          console.log(`💬 Received data channel from peer ${peerId}`);
-        }
-      };
+    peer.on('connection', handleConnection);
+    return () => {
+      peer.off('connection', handleConnection);
+    };
+  }, [peer, setupDataConnectionEvents]);
 
-      peerConnection.ondatachannel = handleDataChannel;
-    }
-  }, [myId, handleIncomingMessage]);
+  // 2. Actively Connect to peers who join the room
+  useEffect(() => {
+    if (!peer || !myId) return;
 
-  /**
-   * Clean up data channel for a specific peer
-   * @param {string} peerId - The peer ID to clean up
-   */
+    Object.keys(users).forEach((peerId) => {
+      if (dataConnections[peerId]) return;
+      
+      const channelKey = `${myId}-${peerId}`;
+      const reverseChannelKey = `${peerId}-${myId}`;
+      if (connectionCreationRef.current.has(channelKey) || connectionCreationRef.current.has(reverseChannelKey)) return;
+
+      // Always initiate connection to ensure both sides try to connect
+      console.log(`💬 Actively initiating data connection to ${peerId}`);
+      connectionCreationRef.current.add(channelKey);
+      const conn = peer.connect(peerId, { reliable: true });
+      setupDataConnectionEvents(conn, peerId);
+    });
+  }, [peer, myId, users, dataConnections, setupDataConnectionEvents]);
+
   const cleanupPeerDataChannel = useCallback((peerId) => {
-    const channel = dataChannels[peerId];
-    if (channel) {
-      try {
-        channel.close();
-      } catch (error) {
-        console.error(`Error closing data channel for peer ${peerId}:`, error);
-      }
+    const conn = dataConnections[peerId];
+    if (conn) {
+      try { conn.close(); } catch (e) {}
     }
 
-    setDataChannels(prev => {
+    setDataConnections(prev => {
       const updated = cloneDeep(prev);
       delete updated[peerId];
       return updated;
@@ -246,66 +185,32 @@ const useChat = (peer, myId, users = {}) => {
       return updated;
     });
 
-    const channelKey = `${myId}-${peerId}`;
-    channelCreationRef.current.delete(channelKey);
-  }, [dataChannels, myId]);
+    connectionCreationRef.current.delete(`${myId}-${peerId}`);
+  }, [dataConnections, myId]);
 
-  /**
-   * Clear all chat messages
-   */
   const clearMessages = useCallback(() => {
     setMessages([]);
   }, []);
 
-  // Effect to setup data channels when new users connect
-  useEffect(() => {
-    if (!peer || !myId) return;
-
-    Object.entries(users).forEach(([peerId, call]) => {
-      // Skip if we already have a data channel for this peer
-      if (dataChannels[peerId] || !call?.peerConnection) {
-        return;
-      }
-
-      // Determine who should initiate the data channel
-      // Use consistent logic: peer with "larger" ID creates the channel
-      const shouldInitiate = myId > peerId;
-      
-      console.log(`💬 Setting up data channel with ${peerId}, initiating: ${shouldInitiate}`);
-      setupDataChannel(peerId, call.peerConnection, shouldInitiate);
-    });
-  }, [peer, myId, users, dataChannels, setupDataChannel]);
-
-  // Cleanup effect
   useEffect(() => {
     return () => {
-      // Cleanup all data channels on unmount
-      Object.entries(dataChannels).forEach(([peerId, channel]) => {
-        try {
-          channel.close();
-        } catch (error) {
-          console.error(`Error closing data channel for peer ${peerId}:`, error);
-        }
+      Object.entries(dataConnections).forEach(([peerId, conn]) => {
+        try { conn.close(); } catch (e) {}
       });
     };
   }, []);
 
   return {
-    // State
     messages,
     captions,
     connectedPeers: Array.from(connectedPeers),
     isConnected: connectedPeers.size > 0,
-    
-    // Actions
     sendMessage,
     addMessage,
     sendCaption,
     addCaption,
     clearMessages,
     cleanupPeerDataChannel,
-    
-    // Utility
     messageCount: messages.length,
     hasMessages: messages.length > 0
   };
