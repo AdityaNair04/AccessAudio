@@ -103,9 +103,12 @@ const Room = () => {
       if (latestCaption.text) {
         // Use postMessage to push the text seamlessly into the Angular NGXS Store without reloading the page
         console.log("Piping text to 3D Avatar:", latestCaption.text);
+        
+        // Ensure we send a default signed language if none is present to avoid "Access Denied"
         avatarIframeRef.current.contentWindow.postMessage({
           type: 'SET_TEXT',
-          text: latestCaption.text
+          text: latestCaption.text,
+          signedLanguage: 'ase' // Default to American Sign Language if not specified
         }, '*');
       }
     }
@@ -404,7 +407,7 @@ const Room = () => {
               {/* Angular Subsystem Embedded Execution */}
               <iframe 
                 ref={avatarIframeRef}
-                src="/avatar/index.html?embed=true" 
+                src="/3d-avatar" 
                 className="w-full flex-1 border-none bg-slate-900"
                 title="Avatar Interpreter"
               />

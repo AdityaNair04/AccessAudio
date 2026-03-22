@@ -97,8 +97,8 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
                     }));
                 }
             }
-            // Increase polling rate to 50ms since it's now fully bound by the ACK cycle
-            loopId = setTimeout(sendFrames, 50);
+            // Polling rate at 40ms to maximize frame detection without saturating the connection
+            loopId = setTimeout(sendFrames, 40);
         };
 
         ws.addEventListener("open", sendFrames);
