@@ -47,76 +47,83 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
         const wsUrl = process.env.NEXT_PUBLIC_AI_WS_URL || defaultWsUrl;
         console.log(`🔌 Attempting to connect to AI WebSocket at: ${wsUrl}`);
         
-        const ws = new WebSocket(wsUrl);
-        wsRef.current = ws;
-
-        ws.onopen = () => {
-            console.log("✅ AI WebSocket Connected");
-            setAiStatus("connected");
-        };
-
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                // console.log("📩 Received from AI:", data.type); // Quiet logs to avoid spam
-                
-                if (data.type === "buffer_update") {
-                    setAiBuffer(data.words);
-                } else if (data.type === "emotion_update") {
-                    setAiEmotion(data.emotion);
-                } else if (data.type === "translating") {
-                    setAiStatus("translating");
-                } else if (data.type === "translation_result") {
-                    setAiStatus("connected");
-                    setAiBuffer([]);
-                    
-                    if (onTranslationReceivedRef.current) {
-                        onTranslationReceivedRef.current({
-                            text: data.sentence,
-                            emotion: data.emotion,
-                            source: data.source ? data.source.join(" ") : ""
-                        });
-                    }
-                } else if (data.type === "ack") {
-                    ws.waitingForAck = false;
-                }
-            } catch (e) {
-                console.error("Failed to parse AI message:", e);
-            }
-        };
-
-        ws.onclose = () => {
-            console.log("❌ Disconnected from AI Backend");
-            setAiStatus("disconnected");
-        };
-
+        let reconnectTimeout;
         let loopId;
-        ws.waitingForAck = false;
-        
-        const sendFrames = () => {
-            if (ws.readyState === WebSocket.OPEN && isVideoEnabledRef.current && isActiveRef.current) {
-                if (video.videoWidth > 0 && video.videoHeight > 0 && !ws.waitingForAck) {
-                    ws.waitingForAck = true; // Block until Python acks
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    const b64 = canvas.toDataURL("image/jpeg", 0.4);
-                    ws.send(JSON.stringify({
-                        type: "frame",
-                        image: b64
-                    }));
+
+        const connect = () => {
+            const ws = new WebSocket(wsUrl);
+            wsRef.current = ws;
+            ws.waitingForAck = false;
+
+            const sendFrames = () => {
+                if (ws.readyState === WebSocket.OPEN && isVideoEnabledRef.current && isActiveRef.current) {
+                    if (video.videoWidth > 0 && video.videoHeight > 0 && !ws.waitingForAck) {
+                        ws.waitingForAck = true;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const b64 = canvas.toDataURL("image/jpeg", 0.4);
+                        ws.send(JSON.stringify({ type: "frame", image: b64 }));
+                    }
                 }
-            }
-            // Polling rate at 40ms to maximize frame detection without saturating the connection
-            loopId = setTimeout(sendFrames, 40);
+                // Polling rate at 60ms to be safer with resources
+                loopId = setTimeout(sendFrames, 60);
+            };
+
+            ws.onopen = () => {
+                console.log("✅ AI WebSocket Connected");
+                setAiStatus("connected");
+                sendFrames();
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === "buffer_update") {
+                        setAiBuffer(data.words);
+                    } else if (data.type === "emotion_update") {
+                        setAiEmotion(data.emotion);
+                    } else if (data.type === "translating") {
+                        setAiStatus("translating");
+                    } else if (data.type === "translation_result") {
+                        setAiStatus("connected");
+                        setAiBuffer([]);
+                        if (onTranslationReceivedRef.current) {
+                            onTranslationReceivedRef.current({
+                                text: data.sentence,
+                                emotion: data.emotion,
+                                source: data.source ? data.source.join(" ") : ""
+                            });
+                        }
+                    } else if (data.type === "ack") {
+                        ws.waitingForAck = false;
+                    }
+                } catch (e) {
+                    console.error("Failed to parse AI message:", e);
+                }
+            };
+
+            ws.onclose = (e) => {
+                console.log(`❌ AI Backend Disconnected (Code: ${e.code}). Reconnecting in 3s...`);
+                setAiStatus("disconnected");
+                if (loopId) clearTimeout(loopId);
+                reconnectTimeout = setTimeout(connect, 3000);
+            };
+
+            ws.onerror = (err) => {
+                console.error("⚠️ WebSocket Error:", err);
+                ws.close();
+            };
         };
 
-        ws.addEventListener("open", sendFrames);
+        connect();
 
         return () => {
-            clearTimeout(loopId);
+            if (loopId) clearTimeout(loopId);
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
             video.pause();
             video.srcObject = null;
-            if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-                ws.close();
+            if (wsRef.current) {
+                wsRef.current.onclose = null; // Prevent reconnection on intentional close
+                wsRef.current.close();
             }
         };
     }, [stream, isActive]); 
