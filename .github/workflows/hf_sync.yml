@@ -16,4 +16,6 @@ jobs:
       - name: Push to hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: git push --force https://An1204:$HF_TOKEN@huggingface.co/spaces/An1204/AccessAudio HEAD:main
+        run: |
+          git remote add hf https://An1204:$HF_TOKEN@huggingface.co/spaces/An1204/AccessAudio
+          git push --force hf main:main
