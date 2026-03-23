@@ -18,7 +18,12 @@ export async function GET(request) {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Referer': 'https://sign.mt/',
-        'Origin': 'https://sign.mt'
+        'Origin': 'https://sign.mt',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'cross-site'
       }
     });
 
@@ -35,10 +40,14 @@ export async function GET(request) {
       const data = await response.json();
       return NextResponse.json(data);
     } else {
-      const text = await response.text();
-      return new Response(text, {
+      // Use arrayBuffer() to preserve binary data integrity for .pose files
+      const buffer = await response.arrayBuffer();
+      return new Response(buffer, {
         status: response.status,
-        headers: { 'Content-Type': contentType || 'text/plain' }
+        headers: { 
+          'Content-Type': contentType || 'application/octet-stream',
+          'Cache-Control': 'no-store, max-age=0'
+        }
       });
     }
   } catch (error) {
