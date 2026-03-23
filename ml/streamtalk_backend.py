@@ -87,8 +87,8 @@ async def fetch_gemini_translation(words, emotion):
         print("[Gemini Error] No GEMINI_API_KEY found")
         return " ".join(words)
         
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # Using the new google-genai SDK (version 0.3.0 in requirements.txt)
+    client = genai.Client(api_key=api_key)
     
     prompt = (
         f"You are a helpful translator. Translate these disjointed sign language words "
@@ -97,9 +97,11 @@ async def fetch_gemini_translation(words, emotion):
         f"Return ONLY the spoken sentence without any quotes or extra text."
     )
     
+    # Run in thread pool so it doesn't block async loop
     loop = asyncio.get_event_loop()
     def _call():
-        return model.generate_content(prompt)
+        # gemini-2.0-flash is the latest stable high-speed model
+        return client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
         
     try:
         response = await loop.run_in_executor(None, _call)

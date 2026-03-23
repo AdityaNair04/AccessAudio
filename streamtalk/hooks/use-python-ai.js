@@ -34,14 +34,14 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
         video.play().catch(e => console.warn("AI Video play failed:", e));
 
         const canvas = document.createElement("canvas");
-        // Keep resolution extremely low to optimize memory on both client and Render backend
-        canvas.width = 224; 
-        canvas.height = 224;
+        // Reverting to higher resolution for better model accuracy now that we have Hugging Face resources
+        canvas.width = 320; 
+        canvas.height = 320;
         const ctx = canvas.getContext("2d");
 
-        // Fallback to Render URL if no env var is set and we are in production
+        // Fallback to Hugging Face URL if no env var is set and we are in production
         const defaultWsUrl = typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
-            ? "wss://accessaudio-7.onrender.com/ws" 
+            ? "wss://an1204-accessaudio.hf.space/ws" 
             : "ws://localhost:8000/ws";
             
         const wsUrl = process.env.NEXT_PUBLIC_AI_WS_URL || defaultWsUrl;
@@ -60,12 +60,13 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
                     if (video.videoWidth > 0 && video.videoHeight > 0 && !ws.waitingForAck) {
                         ws.waitingForAck = true;
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        const b64 = canvas.toDataURL("image/jpeg", 0.4);
+                        // Increased quality to 0.7 for better detection accuracy
+                        const b64 = canvas.toDataURL("image/jpeg", 0.7);
                         ws.send(JSON.stringify({ type: "frame", image: b64 }));
                     }
                 }
-                // Polling rate at 60ms to be safer with resources
-                loopId = setTimeout(sendFrames, 60);
+                // Polling rate at 33ms (~30 FPS) to match localhost performance
+                loopId = setTimeout(sendFrames, 33);
             };
 
             ws.onopen = () => {
