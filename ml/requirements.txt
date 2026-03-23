@@ -11,3 +11,4 @@ mediapipe==0.10.11
 tensorflow-cpu==2.15.0
 google-genai==0.3.0
 python-multipart==0.0.9
+python-dotenv==1.0.1

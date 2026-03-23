@@ -14,6 +14,10 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai.errors import APIError
+from dotenv import load_dotenv
+
+# Load environment variables from .env file for local development
+load_dotenv()
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
@@ -139,9 +143,9 @@ class ConnectionState:
         self.last_word_time = time.time()
         self.last_predicted_word = None
         
-        self.prediction_history = deque(maxlen=5)
+        self.prediction_history = deque(maxlen=3) # Reduced from 5 for faster detection
         self.in_cooldown = False
-        self.cooldown_duration = 1.5
+        self.cooldown_duration = 1.0 # Reduced from 1.5
         self.cooldown_start_time = 0
         
         self.frame_count = 0
@@ -220,7 +224,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     sign_idx = np.argmax(probs)
                     sign_conf = probs[sign_idx]
                     
-                    if sign_conf > 0.7:
+                    if sign_conf > 0.6: # Reduced from 0.7 for better sensitivity
                         word = sign_labels[sign_idx]
                         state.prediction_history.append(word)
                         if len(state.prediction_history) == state.prediction_history.maxlen and len(set(state.prediction_history)) == 1:
