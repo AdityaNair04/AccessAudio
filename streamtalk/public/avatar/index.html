@@ -17,6 +17,34 @@
     <meta name="application-name" content="Sign Translate">
     <meta name="apple-mobile-web-app-title" content="Sign Translate">
     <link rel="manifest" href="manifest.webmanifest">
+    <script>
+      // Proxy script to bypass 403 Forbidden by routing through our own Next.js API
+      (function() {
+        const originalFetch = window.fetch;
+        window.fetch = function() {
+          let url = arguments[0];
+          if (typeof url === 'string' && url.includes('us-central1-sign-mt.cloudfunctions.net/spoken_text_to_signed_pose')) {
+            console.log('[PROXY FETCH]', url);
+            const params = new URL(url).searchParams;
+            const newUrl = `/api/proxy/sign-pose?text=${params.get('text')}&spoken=${params.get('spoken')}&signed=${params.get('signed')}`;
+            return originalFetch.apply(this, [newUrl, arguments[1]]);
+          }
+          return originalFetch.apply(this, arguments);
+        };
+
+        const originalOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function() {
+          let url = arguments[1];
+          if (typeof url === 'string' && url.includes('us-central1-sign-mt.cloudfunctions.net/spoken_text_to_signed_pose')) {
+            console.log('[PROXY XHR]', url);
+            const params = new URL(url).searchParams;
+            const newUrl = `/api/proxy/sign-pose?text=${params.get('text')}&spoken=${params.get('spoken')}&signed=${params.get('signed')}`;
+            return originalOpen.apply(this, [arguments[0], newUrl, ...Array.from(arguments).slice(2)]);
+          }
+          return originalOpen.apply(this, arguments);
+        };
+      })();
+    </script>
 
     <!-- Based on --ion-toolbar-background -->
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">

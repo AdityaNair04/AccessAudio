@@ -43,8 +43,30 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: "frame-ancestors 'self';",
           },
+          // Allow cross-origin requests for wasm and data files
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, OPTIONS',
+          }
         ],
       },
+      {
+        source: '/avatar/assets/models/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/octet-stream',
+          }
+        ]
+      }
     ];
   },
   async rewrites() {
@@ -57,15 +79,29 @@ const nextConfig = {
         source: '/3d-avatar/:path*',
         destination: '/avatar/:path*',
       },
-      // Ensure absolute path requests from the Angular app (like /assets/...) reach the right folder
+      // Fix for missing language detector model - redirect to CDN if local fetch fails
       {
-        source: '/avatar/assets/:path*',
-        destination: '/avatar/assets/:path*',
+        source: '/avatar/assets/models/mediapipe-language-detector/model.tflite',
+        destination: 'https://storage.googleapis.com/mediapipe-tasks/language_detector/language_detector.tflite',
+      },
+      {
+        source: '/avatar/assets/models/mediapipe-language-detector/:file.wasm',
+        destination: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-text@latest/wasm/:file.wasm',
       },
       // Fix for holistic/mediapipe model naming convention
       {
         source: '/avatar/assets/models_ctor/:path*',
         destination: '/avatar/assets/models/holistic/:path*',
+      },
+      // Ensure absolute path requests from the Angular app reach the right folder
+      {
+        source: '/avatar/assets/:path*',
+        destination: '/avatar/assets/:path*',
+      },
+      // IMPORTANT: Explicitly handle .tflite, .data, and .binarypb files which are failing
+      {
+        source: '/avatar/assets/models/:path*',
+        destination: '/avatar/assets/models/:path*',
       },
       {
         source: '/assets/:path*',

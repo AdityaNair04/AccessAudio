@@ -80,6 +80,13 @@ export default function CaptionsOverlay({ captions, aiStatus, aiBuffer, aiEmotio
            <Loader2 className="w-3.5 h-3.5 animate-spin"/> Gemini is Translating Context...
         </div>
       )}
+      
+      {aiStatus === 'connected' && (!aiBuffer || aiBuffer.length === 0) && !isSpeechEnabled && (
+        <div className="mb-2 bg-emerald-600/90 text-white text-xs px-4 py-1.5 flex items-center gap-2 rounded-full shadow-lg transition-all">
+           <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+           Analyzing Video [{aiEmotion || "Neutral"}]
+        </div>
+      )}
 
       {/* Actual Captions Area */}
       <div className="w-full flex flex-col gap-2">
