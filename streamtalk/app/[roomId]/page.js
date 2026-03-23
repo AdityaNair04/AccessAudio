@@ -412,6 +412,8 @@ const Room = () => {
                title="Avatar Interpreter"
                allow="camera; microphone; display-capture; clipboard-read; clipboard-write; autoplay; storage-access"
                allowFullScreen
+               // This is the key attribute for modern browsers to fix "Access Denied" in iframes
+               credentialless="true"
              />
             </div>
           )}
