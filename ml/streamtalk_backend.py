@@ -91,29 +91,38 @@ async def fetch_gemini_translation(words, emotion):
         print("[Gemini Error] No GEMINI_API_KEY found")
         return " ".join(words)
         
-    # Using the new google-genai SDK (version 0.3.0 in requirements.txt)
-    client = genai.Client(api_key=api_key)
-    
-    prompt = (
-        f"You are a helpful translator. Translate these disjointed sign language words "
-        f"into a single, grammatically correct, natural flowing sentence: {words}. "
-        f"The user is feeling {emotion}. Give the response a subtle natural emotional tone matching this feeling. "
-        f"Return ONLY the spoken sentence without any quotes or extra text."
-    )
-    
-    # Run in thread pool so it doesn't block async loop
-    loop = asyncio.get_event_loop()
-    def _call():
-        # gemini-2.0-flash is the latest stable high-speed model
-        return client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
-        
+    print(f"💎 Initializing Gemini with key: {api_key[:5]}...{api_key[-5:]}")
     try:
+        # Using the new google-genai SDK (version 0.3.0 in requirements.txt)
+        client = genai.Client(api_key=api_key)
+        
+        prompt = (
+            f"You are a helpful translator. Translate these disjointed sign language words "
+            f"into a single, grammatically correct, natural flowing sentence: {words}. "
+            f"The user is feeling {emotion}. Give the response a subtle natural emotional tone matching this feeling. "
+            f"Return ONLY the spoken sentence without any quotes or extra text."
+        )
+        
+        print(f"📝 Prompting Gemini with words: {words}")
+        
+        # Run in thread pool so it doesn't block async loop
+        loop = asyncio.get_event_loop()
+        def _call():
+            # gemini-2.0-flash is the latest stable high-speed model
+            return client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
+            
         response = await loop.run_in_executor(None, _call)
+        
         if not response or not response.text:
+            print("⚠️ Gemini returned empty response")
             return " ".join(words)
-        return response.text.strip()
+            
+        translated_text = response.text.strip()
+        print(f"✅ Gemini Translated: {translated_text}")
+        return translated_text
+        
     except Exception as e:
-        print(f"[Gemini Error] {e}")
+        print(f"❌ [Gemini Error] {type(e).__name__}: {e}")
         return " ".join(words)
 
 # --- FastAPI Initialization ---
