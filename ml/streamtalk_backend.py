@@ -81,22 +81,30 @@ def process_face(model, face_image_bgr):
     return class_idx.item(), confidence.item()
 
 async def fetch_gemini_translation(words, emotion):
-    if "GEMINI_API_KEY" not in os.environ:
-        os.environ["GEMINI_API_KEY"] = "AIzaSyA7QoJ-arxPITlr0qnCuDM9RRw13WSPLao"
+    # Ensure key is available
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        print("[Gemini Error] No GEMINI_API_KEY found")
+        return " ".join(words)
         
-    client = genai.Client() # Uses GEMINI_API_KEY from environment
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    
     prompt = (
         f"You are a helpful translator. Translate these disjointed sign language words "
         f"into a single, grammatically correct, natural flowing sentence: {words}. "
         f"The user is feeling {emotion}. Give the response a subtle natural emotional tone matching this feeling. "
         f"Return ONLY the spoken sentence without any quotes or extra text."
     )
-    # Run in thread pool so it doesn't block async loop
+    
     loop = asyncio.get_event_loop()
     def _call():
-        return client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+        return model.generate_content(prompt)
+        
     try:
         response = await loop.run_in_executor(None, _call)
+        if not response or not response.text:
+            return " ".join(words)
         return response.text.strip()
     except Exception as e:
         print(f"[Gemini Error] {e}")
