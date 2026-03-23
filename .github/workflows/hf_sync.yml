@@ -15,6 +15,12 @@ jobs:
           lfs: true
       - name: Install Git LFS
         run: git lfs install
+      - name: Clean submodule and migrate LFS
+        run: |
+          # Remove broken submodule reference from index if it exists
+          git rm --cached avatar/translate || true
+          # Migrate large files to LFS pointers in the current branch
+          git lfs migrate import --include="*.zip,*.data,*.pth,*.tflite,*.bin" --everything --yes
       - name: Push to hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
