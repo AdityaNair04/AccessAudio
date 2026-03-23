@@ -14,11 +14,8 @@ jobs:
           fetch-depth: 0
           lfs: true
       - name: Push to hub
-        uses: nateraw/huggingface-sync-action@v0.0.5
-        with:
-          github_repo_id: "AdityaNair04/AccessAudio"
-          huggingface_repo_id: "An1204/AccessAudio"
-          hf_token: ${{ secrets.HF_TOKEN }}
-          repo_type: "space"
-          space_sdk: "docker"
-          private: false
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git remote add space https://An1204:$HF_TOKEN@huggingface.co/spaces/An1204/AccessAudio
+          git push --force space main
