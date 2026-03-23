@@ -11,6 +11,7 @@ export async function GET(request) {
   }
 
   const targetUrl = `https://us-central1-sign-mt.cloudfunctions.net/spoken_text_to_signed_pose?text=${encodeURIComponent(text)}&spoken=${spoken}&signed=${signed}`;
+  console.log(`[PROXY] Proxying to ${targetUrl}`);
 
   try {
     const response = await fetch(targetUrl, {
@@ -21,16 +22,27 @@ export async function GET(request) {
       }
     });
 
+    console.log(`[PROXY] Response status: ${response.status}`);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Proxy fetch failed:', response.status, errorText);
-      return NextResponse.json({ error: 'Failed to fetch from target' }, { status: response.status });
+      console.error(`[PROXY ERROR] Fetch failed: ${response.status}`, errorText);
+      return NextResponse.json({ error: `Failed to fetch from target: ${response.status}` }, { status: response.status });
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json();
+      return NextResponse.json(data);
+    } else {
+      const text = await response.text();
+      return new Response(text, {
+        status: response.status,
+        headers: { 'Content-Type': contentType || 'text/plain' }
+      });
+    }
   } catch (error) {
-    console.error('Proxy error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('[PROXY ERROR] Internal error:', error);
+    return NextResponse.json({ error: `Internal server error: ${error.message}` }, { status: 500 });
   }
 }

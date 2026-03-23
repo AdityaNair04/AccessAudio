@@ -66,6 +66,15 @@ const nextConfig = {
             value: 'application/octet-stream',
           }
         ]
+      },
+      {
+        source: '/(.*).wasm',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/wasm',
+          }
+        ]
       }
     ];
   },
