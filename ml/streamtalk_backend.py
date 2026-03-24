@@ -107,11 +107,19 @@ async def fetch_gemini_translation(words, emotion):
         print(f"📝 PROMPT FOR GEMINI:\n---\n{prompt}\n---")
         
         loop = asyncio.get_event_loop()
-        def _call():
-            # Switching to 'gemini-1.5-flash-latest' to ensure compatibility with v1beta API version used by SDK
-            return client.models.generate_content(model='gemini-1.5-flash-latest', contents=prompt)
+        
+        def _call(model_name):
+            print(f"🔄 Attempting translation with model: {model_name}")
+            return client.models.generate_content(model=model_name, contents=prompt)
             
-        response = await loop.run_in_executor(None, _call)
+        try:
+            # First choice: Gemini 2.0 Flash (latest speed/intelligence)
+            response = await loop.run_in_executor(None, _call, 'gemini-2.0-flash')
+        except Exception as e:
+            print(f"⚠️ Primary model failed: {e}")
+            # Fallback choice: Gemini Flash Latest (Stable 1.5 Flash line with high quota)
+            print("🔄 Falling back to stable 'gemini-flash-latest'...")
+            response = await loop.run_in_executor(None, _call, 'gemini-flash-latest')
         
         if not response or not hasattr(response, 'text') or not response.text:
             error_msg = f"[GEMINI ERROR] Received an empty or invalid response from the API. Response: {response}"
