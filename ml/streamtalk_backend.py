@@ -108,7 +108,7 @@ async def fetch_gemini_translation(words, emotion):
         
         loop = asyncio.get_event_loop()
         def _call():
-            return client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
+            return client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
             
         response = await loop.run_in_executor(None, _call)
         
