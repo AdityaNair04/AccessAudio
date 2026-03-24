@@ -85,6 +85,10 @@ const nextConfig = {
         destination: '/avatar/index.html',
       },
       {
+        source: '/3d-avatar/',
+        destination: '/avatar/index.html',
+      },
+      {
         source: '/3d-avatar/:path*',
         destination: '/avatar/:path*',
       },
