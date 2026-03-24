@@ -64,95 +64,6 @@ const Room = () => {
   const [isAvatarEnabled, setIsAvatarEnabled] = useState(false);
   const avatarIframeRef = useRef(null);
 
-  const callRetries = useRef({});
-  const activeCalls = useRef({});
-  const CALL_RETRY_MAX = 5;
-  const CALL_RETRY_BASE_DELAY = 1000;
-
-  const scheduleCallRetry = (peerId, callback) => {
-    callRetries.current[peerId] = (callRetries.current[peerId] || 0) + 1;
-    const attempt = callRetries.current[peerId];
-
-    if (attempt > CALL_RETRY_MAX) {
-      console.warn(`⚠️ Max call retry attempts reached for ${peerId}`);
-      return;
-    }
-
-    const delay = CALL_RETRY_BASE_DELAY * attempt;
-    console.log(`🔄 Scheduler: retrying call to ${peerId}, attempt ${attempt} after ${delay}ms`);
-
-    setTimeout(() => {
-      if (!peer || !stream) return;
-      callback();
-    }, delay);
-  };
-
-  const cleanupPeerCall = (peerId) => {
-    const existing = activeCalls.current[peerId];
-    if (existing) {
-      try { existing.close(); } catch (e) {}
-      delete activeCalls.current[peerId];
-    }
-
-    setPlayers((prev) => {
-      const copy = cloneDeep(prev);
-      delete copy[peerId];
-      return copy;
-    });
-
-    setUsers((prev) => {
-      const copy = cloneDeep(prev);
-      delete copy[peerId];
-      return copy;
-    });
-  };
-
-  const setupCallListeners = (call, remotePeerId) => {
-    activeCalls.current[remotePeerId] = call;
-
-    call.on("stream", (incomingStream) => {
-      console.log(`incoming stream from ${remotePeerId}`);
-      setPlayers((prev) => ({
-        ...prev,
-        [remotePeerId]: {
-          url: incomingStream,
-          muted: false,
-          playing: true,
-          audioEnabled: true,
-        },
-      }));
-
-      setUsers((prev) => ({
-        ...prev,
-        [remotePeerId]: call,
-      }));
-    });
-
-    call.on("close", () => {
-      console.warn(`Call closed with ${remotePeerId}`);
-      cleanupPeerCall(remotePeerId);
-
-      if (peer && stream) {
-        scheduleCallRetry(remotePeerId, () => {
-          const retryCall = peer.call(remotePeerId, stream);
-          setupCallListeners(retryCall, remotePeerId);
-        });
-      }
-    });
-
-    call.on("error", (error) => {
-      console.error(`Call error with ${remotePeerId}:`, error);
-      cleanupPeerCall(remotePeerId);
-
-      if (peer && stream) {
-        scheduleCallRetry(remotePeerId, () => {
-          const retryCall = peer.call(remotePeerId, stream);
-          setupCallListeners(retryCall, remotePeerId);
-        });
-      }
-    });
-  };
-
   // Initialize chat functionality
   const {
     messages,
@@ -240,22 +151,59 @@ const Room = () => {
   useEffect(() => {
     if (!socket || !peer || !stream) return;
 
-    const makeCallToPeer = (remotePeerId) => {
-      if (!peer || !stream) return;
-      if (activeCalls.current[remotePeerId]) {
-        console.log(`✅ Already connected to ${remotePeerId}, skipping duplicate call`);
-        return;
-      }
-
-      console.log(`user connected in room with userId ${remotePeerId}`);
-      const call = peer.call(remotePeerId, stream);
-
-      callRetries.current[remotePeerId] = 0;
-      setupCallListeners(call, remotePeerId);
-    };
-
     const handleUserConnected = (newUser) => {
-      makeCallToPeer(newUser);
+      console.log(`user connected in room with userId ${newUser}`);
+      const call = peer.call(newUser, stream);
+
+      call.on("stream", (incomingStream) => {
+        console.log(`incoming stream from ${newUser}`);
+        setPlayers((prev) => ({
+          ...prev,
+          [newUser]: {
+            url: incomingStream,
+            muted: false, // Allow remote audio to be heard
+            playing: true,
+            audioEnabled: true, // Track actual audio state
+          },
+        }));
+
+        setUsers((prev) => ({
+          ...prev,
+          [newUser]: call,
+        }));
+      });
+
+      // Handle call close event for outgoing calls
+      call.on("close", () => {
+        console.log(`Outgoing call closed with ${newUser}`);
+        setPlayers((prev) => {
+          const copy = cloneDeep(prev);
+          delete copy[newUser];
+          return copy;
+        });
+
+        setUsers((prev) => {
+          const copy = cloneDeep(prev);
+          delete copy[newUser];
+          return copy;
+        });
+      });
+
+      // Handle call error event for outgoing calls
+      call.on("error", (error) => {
+        console.error(`Outgoing call error with ${newUser}:`, error);
+        setPlayers((prev) => {
+          const copy = cloneDeep(prev);
+          delete copy[newUser];
+          return copy;
+        });
+
+        setUsers((prev) => {
+          const copy = cloneDeep(prev);
+          delete copy[newUser];
+          return copy;
+        });
+      });
     };
 
     socket.on("user-connected", handleUserConnected);
@@ -331,21 +279,62 @@ const Room = () => {
   useEffect(() => {
     if (!peer || !stream) return;
 
-    const handleIncomingCall = (call) => {
-      const callerId = call.peer;
-      console.log(`✔️ Incoming call from ${callerId}`);
+    peer.on("call", (call) => {
+      const { peer: callerId } = call;
       call.answer(stream);
-      setupCallListeners(call, callerId);
 
-      // If a peer had a previous retry counter in flight, reset it on success
-      callRetries.current[callerId] = 0;
-    };
+      call.on("stream", (incomingStream) => {
+        console.log(`incoming stream from ${callerId}`);
+        setPlayers((prev) => ({
+          ...prev,
+          [callerId]: {
+            url: incomingStream,
+            muted: false, // Allow remote audio to be heard
+            playing: true,
+            audioEnabled: true, // Track actual audio state
+          },
+        }));
 
-    peer.on("call", handleIncomingCall);
+        setUsers((prev) => ({
+          ...prev,
+          [callerId]: call,
+        }));
+      });
 
-    return () => {
-      peer.off("call", handleIncomingCall);
-    };
+      // Handle call close event
+      call.on("close", () => {
+        console.log(`Call closed with ${callerId}`);
+        // Remove from players and users when call is closed
+        setPlayers((prev) => {
+          const copy = cloneDeep(prev);
+          delete copy[callerId];
+          return copy;
+        });
+
+        setUsers((prev) => {
+          const copy = cloneDeep(prev);
+          delete copy[callerId];
+          return copy;
+        });
+      });
+
+      // Handle call error event
+      call.on("error", (error) => {
+        console.error(`Call error with ${callerId}:`, error);
+        // Remove from players and users on error
+        setPlayers((prev) => {
+          const copy = cloneDeep(prev);
+          delete copy[callerId];
+          return copy;
+        });
+
+        setUsers((prev) => {
+          const copy = cloneDeep(prev);
+          delete copy[callerId];
+          return copy;
+        });
+      });
+    });
   }, [peer, setPlayers, stream]);
 
   useEffect(() => {
