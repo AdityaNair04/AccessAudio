@@ -88,42 +88,51 @@ async def fetch_gemini_translation(words, emotion):
     # Ensure key is available
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        print("[Gemini Error] No GEMINI_API_KEY found")
-        return " ".join(words)
-        
+        error_msg = "[GEMINI ERROR] API key not configured on the server."
+        print(error_msg)
+        return error_msg
+
     print(f"💎 Initializing Gemini with key: {api_key[:5]}...{api_key[-5:]}")
     try:
-        # Using the new google-genai SDK (version 0.3.0 in requirements.txt)
         client = genai.Client(api_key=api_key)
         
         prompt = (
-            f"You are a helpful translator. Translate these disjointed sign language words "
-            f"into a single, grammatically correct, natural flowing sentence: {words}. "
-            f"The user is feeling {emotion}. Give the response a subtle natural emotional tone matching this feeling. "
-            f"Return ONLY the spoken sentence without any quotes or extra text."
+            f"Translate the following sequence of sign language words into a single, grammatically correct, natural-flowing sentence: '{' '.join(words)}'. "
+            f"The user's detected emotion is '{emotion}'. "
+            f"The final output MUST be only the translated sentence, followed by the emotion in parentheses. "
+            f"For example: 'This is a translated sentence. (Happy)'. "
+            f"DO NOT include any other explanatory text, quotes, or markdown."
         )
         
-        print(f"📝 Prompting Gemini with words: {words}")
+        print(f"📝 PROMPT FOR GEMINI:\n---\n{prompt}\n---")
         
-        # Run in thread pool so it doesn't block async loop
         loop = asyncio.get_event_loop()
         def _call():
-            # gemini-2.0-flash is the latest stable high-speed model
-            return client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
+            return client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
             
         response = await loop.run_in_executor(None, _call)
         
-        if not response or not response.text:
-            print("⚠️ Gemini returned empty response")
-            return " ".join(words)
+        if not response or not hasattr(response, 'text') or not response.text:
+            error_msg = f"[GEMINI ERROR] Received an empty or invalid response from the API. Response: {response}"
+            print(f"⚠️ {error_msg}")
+            return error_msg
             
         translated_text = response.text.strip()
         print(f"✅ Gemini Translated: {translated_text}")
+        
+        if f"({emotion})" not in translated_text:
+            translated_text = f"{translated_text} ({emotion})"
+            
         return translated_text
         
+    except APIError as e:
+        error_msg = f"[GEMINI API ERROR] {type(e).__name__}: {e}. Check your API key, billing, and permissions."
+        print(f"❌ {error_msg}")
+        return error_msg
     except Exception as e:
-        print(f"❌ [Gemini Error] {type(e).__name__}: {e}")
-        return " ".join(words)
+        error_msg = f"[GEMINI HANDLER ERROR] {type(e).__name__}: {e}"
+        print(f"❌ {error_msg}")
+        return error_msg
 
 # --- FastAPI Initialization ---
 app = FastAPI()
