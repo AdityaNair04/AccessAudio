@@ -108,8 +108,8 @@ async def fetch_gemini_translation(words, emotion):
         
         loop = asyncio.get_event_loop()
         def _call():
-            # Switching to gemini-1.5-flash for stable production-level free tier quota
-            return client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
+            # Switching to 'gemini-1.5-flash-latest' to ensure compatibility with v1beta API version used by SDK
+            return client.models.generate_content(model='gemini-1.5-flash-latest', contents=prompt)
             
         response = await loop.run_in_executor(None, _call)
         
