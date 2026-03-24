@@ -64,6 +64,58 @@ const Room = () => {
   const [isAvatarEnabled, setIsAvatarEnabled] = useState(false);
   const avatarIframeRef = useRef(null);
 
+  const callState = useRef({});
+  const CALL_RETRY_MAX = 4;
+  const CALL_RETRY_BASE_MS = 1200;
+
+  const isPeerInRoom = (peerId) => !!peerId && Object.keys(players).includes(peerId);
+
+  const cleanupPeerCall = (peerId) => {
+    if (!peerId) return;
+    if (users[peerId]) {
+      try {
+        users[peerId].close();
+      } catch (e) {
+        console.warn(`Unable to close call for ${peerId}:`, e);
+      }
+    }
+
+    setPlayers((prev) => {
+      const copy = cloneDeep(prev);
+      delete copy[peerId];
+      return copy;
+    });
+
+    setUsers((prev) => {
+      const copy = cloneDeep(prev);
+      delete copy[peerId];
+      return copy;
+    });
+
+    delete callState.current[peerId];
+  };
+
+  const schedulePeerCallRetry = (peerId, callback) => {
+    if (!peerId || !callback) return;
+
+    const failCount = callState.current[peerId]?.retryCount || 0;
+    if (failCount >= CALL_RETRY_MAX) {
+      console.warn(`⚠️ Peer ${peerId} exceeded retry limit (${CALL_RETRY_MAX})`);
+      cleanupPeerCall(peerId);
+      return;
+    }
+
+    callState.current[peerId] = { retryCount: failCount + 1 };
+    const delay = CALL_RETRY_BASE_MS * (failCount + 1);
+    console.log(`🔄 Scheduling reconnect for ${peerId} in ${delay}ms`);
+
+    setTimeout(() => {
+      if (peer && stream && isPeerInRoom(peerId)) {
+        callback();
+      }
+    }, delay);
+  };
+
   // Initialize chat functionality
   const {
     messages,
@@ -151,59 +203,62 @@ const Room = () => {
   useEffect(() => {
     if (!socket || !peer || !stream) return;
 
-    const handleUserConnected = (newUser) => {
-      console.log(`user connected in room with userId ${newUser}`);
-      const call = peer.call(newUser, stream);
-
+    const attachCallHandlers = (remoteId, call) => {
       call.on("stream", (incomingStream) => {
-        console.log(`incoming stream from ${newUser}`);
+        console.log(`incoming stream from ${remoteId}`);
         setPlayers((prev) => ({
           ...prev,
-          [newUser]: {
+          [remoteId]: {
             url: incomingStream,
-            muted: false, // Allow remote audio to be heard
+            muted: false,
             playing: true,
-            audioEnabled: true, // Track actual audio state
+            audioEnabled: true,
           },
         }));
 
         setUsers((prev) => ({
           ...prev,
-          [newUser]: call,
+          [remoteId]: call,
         }));
       });
 
-      // Handle call close event for outgoing calls
-      call.on("close", () => {
-        console.log(`Outgoing call closed with ${newUser}`);
-        setPlayers((prev) => {
-          const copy = cloneDeep(prev);
-          delete copy[newUser];
-          return copy;
-        });
+      const cleanupAndRetry = () => {
+        console.warn(`Call with ${remoteId} closed or errored, cleaning up and possibly retrying.`);
+        cleanupPeerCall(remoteId);
 
-        setUsers((prev) => {
-          const copy = cloneDeep(prev);
-          delete copy[newUser];
-          return copy;
-        });
+        if (socket && peer && stream) {
+          schedulePeerCallRetry(remoteId, () => {
+            if (!users[remoteId]) {
+              // If the peer left, don't reconnect.
+              return;
+            }
+            makeCall(remoteId);
+          });
+        }
+      };
+
+      call.on("close", cleanupAndRetry);
+      call.on("error", (err) => {
+        console.error(`Outgoing call error with ${remoteId}:`, err);
+        cleanupAndRetry();
       });
+    };
 
-      // Handle call error event for outgoing calls
-      call.on("error", (error) => {
-        console.error(`Outgoing call error with ${newUser}:`, error);
-        setPlayers((prev) => {
-          const copy = cloneDeep(prev);
-          delete copy[newUser];
-          return copy;
-        });
+    const makeCall = (remoteId) => {
+      if (!peer || !stream || !remoteId || remoteId === myId) return;
+      if (users[remoteId]) {
+        console.log(`Already have an active call to ${remoteId}, skipping new call.`);
+        return;
+      }
 
-        setUsers((prev) => {
-          const copy = cloneDeep(prev);
-          delete copy[newUser];
-          return copy;
-        });
-      });
+      console.log(`user connected in room with userId ${remoteId}`);
+      const call = peer.call(remoteId, stream);
+      attachCallHandlers(remoteId, call);
+      callState.current[remoteId] = { retryCount: 0 };
+    };
+
+    const handleUserConnected = (newUser) => {
+      makeCall(newUser);
     };
 
     socket.on("user-connected", handleUserConnected);
@@ -211,7 +266,7 @@ const Room = () => {
     return () => {
       socket.off("user-connected", handleUserConnected);
     };
-  }, [peer, setPlayers, socket, stream]);
+  }, [peer, setPlayers, socket, stream, users, myId]);
 
   useEffect(() => {
     if (!socket) return;
@@ -279,8 +334,9 @@ const Room = () => {
   useEffect(() => {
     if (!peer || !stream) return;
 
-    peer.on("call", (call) => {
-      const { peer: callerId } = call;
+    const handleIncomingCall = (call) => {
+      const callerId = call.peer;
+      console.log(`✔️ Incoming call from ${callerId}`);
       call.answer(stream);
 
       call.on("stream", (incomingStream) => {
@@ -289,9 +345,9 @@ const Room = () => {
           ...prev,
           [callerId]: {
             url: incomingStream,
-            muted: false, // Allow remote audio to be heard
+            muted: false,
             playing: true,
-            audioEnabled: true, // Track actual audio state
+            audioEnabled: true,
           },
         }));
 
@@ -301,41 +357,37 @@ const Room = () => {
         }));
       });
 
-      // Handle call close event
-      call.on("close", () => {
-        console.log(`Call closed with ${callerId}`);
-        // Remove from players and users when call is closed
-        setPlayers((prev) => {
-          const copy = cloneDeep(prev);
-          delete copy[callerId];
-          return copy;
-        });
+      const handleCloseOrError = (reason) => {
+        console.warn(`Incoming call with ${callerId} closed/error:`, reason);
+        cleanupPeerCall(callerId);
 
-        setUsers((prev) => {
-          const copy = cloneDeep(prev);
-          delete copy[callerId];
-          return copy;
-        });
-      });
+        if (socket && peer && stream && isPeerInRoom(callerId)) {
+          schedulePeerCallRetry(callerId, () => {
+            // We'll allow user-connected event to drive final call creation for incoming side,
+            // but in case needed we can actively call after delay too.
+            if (peer && stream && isPeerInRoom(callerId)) {
+              const retryCall = peer.call(callerId, stream);
+              // rebind handlers for new outgoing call
+              // attached by user-connected flow when socket sends 'user-connected'
+              retryCall.on("error", (err) => {
+                console.error(`Retry outgoing call error with ${callerId}:`, err);
+                cleanupPeerCall(callerId);
+              });
+            }
+          });
+        }
+      };
 
-      // Handle call error event
-      call.on("error", (error) => {
-        console.error(`Call error with ${callerId}:`, error);
-        // Remove from players and users on error
-        setPlayers((prev) => {
-          const copy = cloneDeep(prev);
-          delete copy[callerId];
-          return copy;
-        });
+      call.on("close", () => handleCloseOrError("closed"));
+      call.on("error", (error) => handleCloseOrError(error));
+    };
 
-        setUsers((prev) => {
-          const copy = cloneDeep(prev);
-          delete copy[callerId];
-          return copy;
-        });
-      });
-    });
-  }, [peer, setPlayers, stream]);
+    peer.on("call", handleIncomingCall);
+
+    return () => {
+      peer.off("call", handleIncomingCall);
+    };
+  }, [peer, setPlayers, stream, socket]);
 
   useEffect(() => {
     if (!stream || !myId) return;
