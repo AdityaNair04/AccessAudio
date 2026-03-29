@@ -4,3 +4,10 @@ ml: .\ai_env\Scripts\python.exe ml\webcam_sign.py
     .\ai_env\Scripts\python.exe ml\webcam_emotion.py
 face + sign (ml, asl): .\ai_env\Scripts\python.exe ml\unified_pipeline.py
 face + sign (ml, isl): .\ai_env\Scripts\python.exe ml\unified_pipeline_v2.py
+
+terminal 1: cd C:\Users\HP\OneDrive\Desktop\Projects-3\Capstone_AccessAudio
+>> .\ai_env\Scripts\python.exe ml\streamtalk_backend.py   
+>>
+
+terminal 2: cd C:\Users\HP\OneDrive\Desktop\Projects-3\Capstone_AccessAudio\streamtalk
+>> npm run dev

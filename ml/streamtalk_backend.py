@@ -172,7 +172,7 @@ class ConnectionState:
         
         self.prediction_history = deque(maxlen=3) # Reduced from 5 for faster detection
         self.in_cooldown = False
-        self.cooldown_duration = 1.0 # Reduced from 1.5
+        self.cooldown_duration = 0.8 # Reduced from 1.0
         self.cooldown_start_time = 0
         
         self.frame_count = 0
@@ -251,7 +251,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     sign_idx = np.argmax(probs)
                     sign_conf = probs[sign_idx]
                     
-                    if sign_conf > 0.6: # Reduced from 0.7 for better sensitivity
+                    if sign_conf > 0.55: # Reduced from 0.6 for better sensitivity in cloud deployment
                         word = sign_labels[sign_idx]
                         state.prediction_history.append(word)
                         if len(state.prediction_history) == state.prediction_history.maxlen and len(set(state.prediction_history)) == 1:
@@ -297,7 +297,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             except: pass
 
                 # Tell React client we are ready for the NEXT frame (Backpressure enforcement)
-                await websocket.send_json({"type": "ack"})
+                # Removed explicit 'ack' to save massive downstream bandwidth; frontend now uses native TCP bufferedAmount
 
                 # --- 3. Manual LLM Translation Trigger ---
                 # The LLM is now strictly triggered via 'approve' messages 

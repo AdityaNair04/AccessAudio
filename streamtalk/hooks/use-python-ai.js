@@ -34,9 +34,9 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
         video.play().catch(e => console.warn("AI Video play failed:", e));
 
         const canvas = document.createElement("canvas");
-        // Reverting to higher resolution for better model accuracy now that we have Hugging Face resources
-        canvas.width = 320; 
-        canvas.height = 320;
+        // Opted for highly optimized 240x240 resolution. Massively reduces payload size while retaining Mediapipe holistic accuracy.
+        canvas.width = 240; 
+        canvas.height = 240;
         const ctx = canvas.getContext("2d");
 
         // Fallback to Hugging Face URL if no env var is set and we are in production
@@ -53,20 +53,23 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
         const connect = () => {
             const ws = new WebSocket(wsUrl);
             wsRef.current = ws;
-            ws.waitingForAck = false;
 
             const sendFrames = () => {
                 if (ws.readyState === WebSocket.OPEN && isVideoEnabledRef.current && isActiveRef.current) {
-                    if (video.videoWidth > 0 && video.videoHeight > 0 && !ws.waitingForAck) {
-                        ws.waitingForAck = true;
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        // Increased quality to 0.7 for better detection accuracy
-                        const b64 = canvas.toDataURL("image/jpeg", 0.7);
-                        ws.send(JSON.stringify({ type: "frame", image: b64 }));
+                    if (video.videoWidth > 0 && video.videoHeight > 0) {
+                        // Native network backpressure loop:
+                        // Only send the next frame if the TCP outbound queue has less than 16KB pending.
+                        // This prevents flooding low-bandwidth connections and eliminates high RTT latency stalling.
+                        if (ws.bufferedAmount < 16384) { 
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            // Quality capped at 0.4
+                            const b64 = canvas.toDataURL("image/jpeg", 0.4);
+                            ws.send(JSON.stringify({ type: "frame", image: b64 }));
+                        }
                     }
                 }
-                // Polling rate at 33ms (~30 FPS) to match localhost performance
-                loopId = setTimeout(sendFrames, 33);
+                // Lock framerate explicitly at ~20 FPS (50ms interval) for consistent model prediction sequences
+                loopId = setTimeout(sendFrames, 50);
             };
 
             ws.onopen = () => {
@@ -94,8 +97,6 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
                                 source: data.source ? data.source.join(" ") : ""
                             });
                         }
-                    } else if (data.type === "ack") {
-                        ws.waitingForAck = false;
                     }
                 } catch (e) {
                     console.error("Failed to parse AI message:", e);
