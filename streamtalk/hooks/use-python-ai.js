@@ -5,6 +5,7 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
     const [aiStatus, setAiStatus] = useState("disconnected");
     const [aiBuffer, setAiBuffer] = useState([]);
     const [aiEmotion, setAiEmotion] = useState("Neutral");
+    const epochRef = useRef(0);
     
     // We use a ref so the interval loop can read the latest value without restarting
     const isVideoEnabledRef = useRef(isVideoEnabled);
@@ -64,12 +65,13 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                             // Quality capped at 0.4
                             const b64 = canvas.toDataURL("image/jpeg", 0.4);
-                            ws.send(JSON.stringify({ type: "frame", image: b64 }));
+                            ws.send(JSON.stringify({ type: "frame", image: b64, epoch: epochRef.current }));
                         }
                     }
                 }
-                // Lock framerate explicitly at ~20 FPS (50ms interval) for consistent model prediction sequences
-                loopId = setTimeout(sendFrames, 50);
+                // Lock framerate explicitly at ~15 FPS (66ms interval) for consistent model prediction sequences
+                // Safely prevents starving the cloud ingress load balancer.
+                loopId = setTimeout(sendFrames, 66);
             };
 
             ws.onopen = () => {
@@ -82,20 +84,24 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
                 try {
                     const data = JSON.parse(event.data);
                     if (data.type === "buffer_update") {
-                        setAiBuffer(data.words);
+                        if (data.epoch === undefined || data.epoch === epochRef.current) {
+                            setAiBuffer(data.words);
+                        }
                     } else if (data.type === "emotion_update") {
                         setAiEmotion(data.emotion);
                     } else if (data.type === "translating") {
                         setAiStatus("translating");
                     } else if (data.type === "translation_result") {
-                        setAiStatus("connected");
-                        setAiBuffer([]);
-                        if (onTranslationReceivedRef.current) {
-                            onTranslationReceivedRef.current({
-                                text: data.sentence,
-                                emotion: data.emotion,
-                                source: data.source ? data.source.join(" ") : ""
-                            });
+                        if (data.epoch === undefined || data.epoch === epochRef.current) {
+                            setAiStatus("connected");
+                            setAiBuffer([]);
+                            if (onTranslationReceivedRef.current) {
+                                onTranslationReceivedRef.current({
+                                    text: data.sentence,
+                                    emotion: data.emotion,
+                                    source: data.source ? data.source.join(" ") : ""
+                                });
+                            }
                         }
                     }
                 } catch (e) {
@@ -133,18 +139,20 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
     const triggerTranslation = (e) => {
         if (e) { e.preventDefault(); e.stopPropagation(); }
         console.log("👆 TRANSLATE Button Clicked! Dispatching to Python.");
+        epochRef.current += 1; // Explicitly invalidate all in-flight obsolete network frames
         setAiStatus("translating"); // Optimistic UI Update: Instantly change UI without waiting for server network RTT
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ type: "approve" }));
+            wsRef.current.send(JSON.stringify({ type: "approve", epoch: epochRef.current }));
         }
     };
 
     const clearBuffer = (e) => {
         if (e) { e.preventDefault(); e.stopPropagation(); }
         console.log("🗑️ CLEAR Button Clicked! Dispatching to Python.");
+        epochRef.current += 1; // Explicitly invalidate all in-flight obsolete network frames
         setAiBuffer([]); // Optimistic UI Update: Instantly clear buffer visually
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ type: "clear" }));
+            wsRef.current.send(JSON.stringify({ type: "clear", epoch: epochRef.current }));
         }
     };
 

@@ -174,6 +174,7 @@ class ConnectionState:
         self.in_cooldown = False
         self.cooldown_duration = 1.5 # Adjusted to perfectly balance natural sequence delays
         self.cooldown_start_time = 0
+        self.epoch = 0
         
         self.frame_count = 0
         self.is_translating = False
@@ -196,10 +197,11 @@ async def websocket_endpoint(websocket: WebSocket):
             
             if message.get("type") == "approve":
                 print("\n[UI COMMAND] Received APPROVE -> Translating to Gemini...")
+                state.epoch = message.get("epoch", state.epoch)
                 if len(state.sign_buffer) > 0 and not state.is_translating:
                     state.is_translating = True
                     await websocket.send_json({"type": "translating"})
-                    asyncio.create_task(run_translation(websocket, state, list(state.sign_buffer), state.current_emotion))
+                    asyncio.create_task(run_translation(websocket, state, list(state.sign_buffer), state.current_emotion, state.epoch))
                     state.sign_buffer.clear()
                     state.last_predicted_word = None
                     state.prediction_history.clear()
@@ -208,12 +210,13 @@ async def websocket_endpoint(websocket: WebSocket):
                     
             elif message.get("type") == "clear":
                 print("\n[UI COMMAND] Received CLEAR -> Purging Buffer")
+                state.epoch = message.get("epoch", state.epoch)
                 state.sign_buffer.clear()
                 state.last_predicted_word = None
                 state.prediction_history.clear()
                 state.sequence.clear()
                 state.in_cooldown = False
-                await websocket.send_json({"type": "buffer_update", "words": [], "status": "cleared"})
+                await websocket.send_json({"type": "buffer_update", "words": [], "status": "cleared", "epoch": state.epoch})
             
             elif message.get("type") == "frame":
                 b64_data = message.get("image", "")
@@ -242,7 +245,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 
                 # --- 1. Sign Language Extraction ---
                 if not state.in_cooldown:
-                    results = holistic.process(image)
+                    results = await asyncio.to_thread(holistic.process, image)
                     keypoints = extract_keypoints_tflite(results)
                     state.sequence.append(keypoints)
                     
@@ -273,13 +276,14 @@ async def websocket_endpoint(websocket: WebSocket):
                                     await websocket.send_json({
                                         "type": "buffer_update",
                                         "words": list(state.sign_buffer),
-                                        "status": "cooling_down"
+                                        "status": "cooling_down",
+                                        "epoch": state.epoch
                                     })
                                     print(f"Buffer: {state.sign_buffer}")
 
                 # --- 2. Emotion Extraction (Every 10 frames) ---
                 if state.frame_count % 10 == 0:
-                    face_results = face_detection.process(image)
+                    face_results = await asyncio.to_thread(face_detection.process, image)
                     if face_results.detections:
                         det = face_results.detections[0]
                         bboxC = det.location_data.relative_bounding_box
@@ -316,15 +320,28 @@ async def websocket_endpoint(websocket: WebSocket):
         holistic.close()
         face_detection.close()
 
-async def run_translation(websocket: WebSocket, state: ConnectionState, words, emotion):
-    sentence = await fetch_gemini_translation(words, emotion)
-    await websocket.send_json({
-        "type": "translation_result",
-        "sentence": sentence,
-        "emotion": emotion,
-        "source": words
-    })
-    state.is_translating = False
+async def run_translation(websocket: WebSocket, state: ConnectionState, words, emotion, epoch):
+    try:
+        sentence = await fetch_gemini_translation(words, emotion)
+        await websocket.send_json({
+            "type": "translation_result",
+            "sentence": sentence,
+            "emotion": emotion,
+            "source": words,
+            "epoch": epoch
+        })
+    except Exception as e:
+        print(f"Translation Failure: {e}")
+        # Send a minimal fallback payload so the UI unlocks
+        await websocket.send_json({
+            "type": "translation_result",
+            "sentence": f"Translation error: {str(e)}",
+            "emotion": emotion,
+            "source": words,
+            "epoch": epoch
+        })
+    finally:
+        state.is_translating = False
     
 if __name__ == "__main__":
     import uvicorn
