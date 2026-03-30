@@ -172,7 +172,7 @@ class ConnectionState:
         
         self.prediction_history = deque(maxlen=3) # Reduced from 5 for faster detection
         self.in_cooldown = False
-        self.cooldown_duration = 0.8 # Reduced from 1.0
+        self.cooldown_duration = 2.0 # Increased to 2.0s to explicitly ignore transitional "hand drop" artifacts
         self.cooldown_start_time = 0
         
         self.frame_count = 0

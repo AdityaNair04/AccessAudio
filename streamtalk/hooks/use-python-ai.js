@@ -133,6 +133,7 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
     const triggerTranslation = (e) => {
         if (e) { e.preventDefault(); e.stopPropagation(); }
         console.log("👆 TRANSLATE Button Clicked! Dispatching to Python.");
+        setAiStatus("translating"); // Optimistic UI Update: Instantly change UI without waiting for server network RTT
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ type: "approve" }));
         }
@@ -141,6 +142,7 @@ export default function usePythonAI(stream, isVideoEnabled, isActive, onTranslat
     const clearBuffer = (e) => {
         if (e) { e.preventDefault(); e.stopPropagation(); }
         console.log("🗑️ CLEAR Button Clicked! Dispatching to Python.");
+        setAiBuffer([]); // Optimistic UI Update: Instantly clear buffer visually
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ type: "clear" }));
         }
