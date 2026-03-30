@@ -195,7 +195,7 @@ async def websocket_endpoint(websocket: WebSocket):
             message = json.loads(data)
             
             if message.get("type") == "approve":
-                print("\n✅ [UI COMMAND] Received APPROVE -> Translating to Gemini...")
+                print("\n[UI COMMAND] Received APPROVE -> Translating to Gemini...")
                 if len(state.sign_buffer) > 0 and not state.is_translating:
                     state.is_translating = True
                     await websocket.send_json({"type": "translating"})
@@ -204,7 +204,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     state.last_predicted_word = None
                     
             elif message.get("type") == "clear":
-                print("\n🧹 [UI COMMAND] Received CLEAR -> Purging Buffer")
+                print("\n[UI COMMAND] Received CLEAR -> Purging Buffer")
                 state.sign_buffer.clear()
                 state.last_predicted_word = None
                 await websocket.send_json({"type": "buffer_update", "words": [], "status": "cleared"})
