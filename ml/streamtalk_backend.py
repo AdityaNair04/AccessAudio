@@ -172,7 +172,7 @@ class ConnectionState:
         
         self.prediction_history = deque(maxlen=3) # Reduced from 5 for faster detection
         self.in_cooldown = False
-        self.cooldown_duration = 2.0 # Increased to 2.0s to explicitly ignore transitional "hand drop" artifacts
+        self.cooldown_duration = 1.5 # Adjusted to perfectly balance natural sequence delays
         self.cooldown_start_time = 0
         
         self.frame_count = 0
@@ -202,11 +202,17 @@ async def websocket_endpoint(websocket: WebSocket):
                     asyncio.create_task(run_translation(websocket, state, list(state.sign_buffer), state.current_emotion))
                     state.sign_buffer.clear()
                     state.last_predicted_word = None
+                    state.prediction_history.clear()
+                    state.sequence.clear()
+                    state.in_cooldown = False
                     
             elif message.get("type") == "clear":
                 print("\n[UI COMMAND] Received CLEAR -> Purging Buffer")
                 state.sign_buffer.clear()
                 state.last_predicted_word = None
+                state.prediction_history.clear()
+                state.sequence.clear()
+                state.in_cooldown = False
                 await websocket.send_json({"type": "buffer_update", "words": [], "status": "cleared"})
             
             elif message.get("type") == "frame":
@@ -235,40 +241,41 @@ async def websocket_endpoint(websocket: WebSocket):
                 image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 
                 # --- 1. Sign Language Extraction ---
-                results = holistic.process(image)
-                keypoints = extract_keypoints_tflite(results)
-                state.sequence.append(keypoints)
-                
-                if len(state.sequence) > SEQUENCE_LENGTH:
-                    state.sequence = state.sequence[-SEQUENCE_LENGTH:]
-                
-                hands_detected = results.left_hand_landmarks or results.right_hand_landmarks
-                
-                if hands_detected and len(state.sequence) == SEQUENCE_LENGTH and not state.in_cooldown:
-                    res = np.array(state.sequence, dtype=np.float32)
-                    prediction = sign_prediction_fn(inputs=res)
-                    probs = prediction['outputs'][0]
-                    sign_idx = np.argmax(probs)
-                    sign_conf = probs[sign_idx]
+                if not state.in_cooldown:
+                    results = holistic.process(image)
+                    keypoints = extract_keypoints_tflite(results)
+                    state.sequence.append(keypoints)
                     
-                    if sign_conf > 0.55: # Reduced from 0.6 for better sensitivity in cloud deployment
-                        word = sign_labels[sign_idx]
-                        state.prediction_history.append(word)
-                        if len(state.prediction_history) == state.prediction_history.maxlen and len(set(state.prediction_history)) == 1:
-                            if word != state.last_predicted_word:
-                                state.sign_buffer.append(word)
-                                state.last_predicted_word = word
-                                state.last_word_time = current_time
-                                state.in_cooldown = True
-                                state.cooldown_start_time = current_time
-                                
-                                # Broadcast buffer status to frontend
-                                await websocket.send_json({
-                                    "type": "buffer_update",
-                                    "words": list(state.sign_buffer),
-                                    "status": "cooling_down"
-                                })
-                                print(f"Buffer: {state.sign_buffer}")
+                    if len(state.sequence) > SEQUENCE_LENGTH:
+                        state.sequence = state.sequence[-SEQUENCE_LENGTH:]
+                    
+                    hands_detected = results.left_hand_landmarks or results.right_hand_landmarks
+                    
+                    if hands_detected and len(state.sequence) == SEQUENCE_LENGTH:
+                        res = np.array(state.sequence, dtype=np.float32)
+                        prediction = sign_prediction_fn(inputs=res)
+                        probs = prediction['outputs'][0]
+                        sign_idx = np.argmax(probs)
+                        sign_conf = probs[sign_idx]
+                        
+                        if sign_conf > 0.55: # Reduced from 0.6 for better sensitivity in cloud deployment
+                            word = sign_labels[sign_idx]
+                            state.prediction_history.append(word)
+                            if len(state.prediction_history) == state.prediction_history.maxlen and len(set(state.prediction_history)) == 1:
+                                if word != state.last_predicted_word:
+                                    state.sign_buffer.append(word)
+                                    state.last_predicted_word = word
+                                    state.last_word_time = current_time
+                                    state.in_cooldown = True
+                                    state.cooldown_start_time = current_time
+                                    
+                                    # Broadcast buffer status to frontend
+                                    await websocket.send_json({
+                                        "type": "buffer_update",
+                                        "words": list(state.sign_buffer),
+                                        "status": "cooling_down"
+                                    })
+                                    print(f"Buffer: {state.sign_buffer}")
 
                 # --- 2. Emotion Extraction (Every 10 frames) ---
                 if state.frame_count % 10 == 0:
