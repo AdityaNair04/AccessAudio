@@ -70,7 +70,7 @@ const Room = () => {
 
   const isPeerInRoom = (peerId) => !!peerId && Object.keys(players).includes(peerId);
 
-  const cleanupPeerCall = (peerId) => {
+  const cleanupPeerCall = (peerId, isRetrying = false) => {
     if (!peerId) return;
     if (users[peerId]) {
       try {
@@ -80,19 +80,30 @@ const Room = () => {
       }
     }
 
-    setPlayers((prev) => {
-      const copy = cloneDeep(prev);
-      delete copy[peerId];
-      return copy;
-    });
+    if (!isRetrying) {
+      setPlayers((prev) => {
+        const copy = cloneDeep(prev);
+        delete copy[peerId];
+        return copy;
+      });
+      delete callState.current[peerId];
+    } else {
+      // Retain the video frame but mark it as reconnecting
+      setPlayers((prev) => {
+        const copy = cloneDeep(prev);
+        if (copy[peerId]) {
+          copy[peerId].isReconnecting = true;
+          copy[peerId].playing = false;
+        }
+        return copy;
+      });
+    }
 
     setUsers((prev) => {
       const copy = cloneDeep(prev);
       delete copy[peerId];
       return copy;
     });
-
-    delete callState.current[peerId];
   };
 
   const schedulePeerCallRetry = (peerId, callback) => {
@@ -224,15 +235,14 @@ const Room = () => {
 
       const cleanupAndRetry = () => {
         console.warn(`Call with ${remoteId} closed or errored, cleaning up and possibly retrying.`);
-        cleanupPeerCall(remoteId);
+        cleanupPeerCall(remoteId, true); // True = Retrying
 
         if (socket && peer && stream) {
           schedulePeerCallRetry(remoteId, () => {
-            if (!users[remoteId]) {
-              // If the peer left, don't reconnect.
-              return;
+            // Check if player still meant to be in room
+            if (isPeerInRoom(remoteId)) {
+              makeCall(remoteId);
             }
-            makeCall(remoteId);
           });
         }
       };
@@ -246,7 +256,7 @@ const Room = () => {
 
     const makeCall = (remoteId) => {
       if (!peer || !stream || !remoteId || remoteId === myId) return;
-      if (users[remoteId]) {
+      if (users[remoteId] && users[remoteId].open) {
         console.log(`Already have an active call to ${remoteId}, skipping new call.`);
         return;
       }
@@ -359,7 +369,7 @@ const Room = () => {
 
       const handleCloseOrError = (reason) => {
         console.warn(`Incoming call with ${callerId} closed/error:`, reason);
-        cleanupPeerCall(callerId);
+        cleanupPeerCall(callerId, true); // True = Retrying
 
         if (socket && peer && stream && isPeerInRoom(callerId)) {
           schedulePeerCallRetry(callerId, () => {
@@ -371,7 +381,7 @@ const Room = () => {
               // attached by user-connected flow when socket sends 'user-connected'
               retryCall.on("error", (err) => {
                 console.error(`Retry outgoing call error with ${callerId}:`, err);
-                cleanupPeerCall(callerId);
+                cleanupPeerCall(callerId, true);
               });
             }
           });

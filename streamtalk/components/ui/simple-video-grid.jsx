@@ -1,5 +1,5 @@
 import ReactPlayer from "react-player";
-import { Mic, MicOff, UserSquare2 } from "lucide-react";
+import { Mic, MicOff, UserSquare2, Loader2, WifiOff } from "lucide-react";
 import { memo } from "react";
 
 const SimpleVideoGrid = ({
@@ -133,6 +133,22 @@ const SimpleVideoGrid = ({
                   height="100%"
                   className="object-cover text-purple-300 px-32 py-16"
                 />
+              </div>
+            )}
+
+            {/* Reconnecting Overlay */}
+            {player.isReconnecting && (
+              <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center animate-in fade-in duration-300">
+                <div className="relative mb-3">
+                  <div className="absolute inset-0 bg-purple-500/20 blur-xl rounded-full animate-pulse"></div>
+                  <Loader2 size={36} className="text-purple-400 animate-spin relative z-10" />
+                </div>
+                <h3 className="text-sm font-semibold text-white tracking-wide">
+                  Reconnecting...
+                </h3>
+                <p className="text-xs text-slate-300 mt-1 flex items-center gap-1.5 opacity-80">
+                  <WifiOff size={12} className="text-rose-400" /> Network unstable
+                </p>
               </div>
             )}
 
