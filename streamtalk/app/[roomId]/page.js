@@ -217,6 +217,11 @@ const Room = () => {
     const attachCallHandlers = (remoteId, call) => {
       call.on("stream", (incomingStream) => {
         console.log(`incoming stream from ${remoteId}`);
+        if (callState.current[remoteId]) {
+          callState.current[remoteId].retryCount = 0;
+        } else {
+          callState.current[remoteId] = { retryCount: 0 };
+        }
         setPlayers((prev) => ({
           ...prev,
           [remoteId]: {
@@ -264,7 +269,9 @@ const Room = () => {
       console.log(`user connected in room with userId ${remoteId}`);
       const call = peer.call(remoteId, stream);
       attachCallHandlers(remoteId, call);
-      callState.current[remoteId] = { retryCount: 0 };
+      if (!callState.current[remoteId]) {
+        callState.current[remoteId] = { retryCount: 0 };
+      }
     };
 
     const handleUserConnected = (newUser) => {
@@ -351,6 +358,11 @@ const Room = () => {
 
       call.on("stream", (incomingStream) => {
         console.log(`incoming stream from ${callerId}`);
+        if (callState.current[callerId]) {
+          callState.current[callerId].retryCount = 0;
+        } else {
+          callState.current[callerId] = { retryCount: 0 };
+        }
         setPlayers((prev) => ({
           ...prev,
           [callerId]: {
@@ -373,16 +385,24 @@ const Room = () => {
 
         if (socket && peer && stream && isPeerInRoom(callerId)) {
           schedulePeerCallRetry(callerId, () => {
-            // We'll allow user-connected event to drive final call creation for incoming side,
-            // but in case needed we can actively call after delay too.
             if (peer && stream && isPeerInRoom(callerId)) {
               const retryCall = peer.call(callerId, stream);
-              // rebind handlers for new outgoing call
-              // attached by user-connected flow when socket sends 'user-connected'
-              retryCall.on("error", (err) => {
-                console.error(`Retry outgoing call error with ${callerId}:`, err);
-                cleanupPeerCall(callerId, true);
+              
+              retryCall.on("stream", (incomingStream) => {
+                if (callState.current[callerId]) {
+                  callState.current[callerId].retryCount = 0;
+                } else {
+                  callState.current[callerId] = { retryCount: 0 };
+                }
+                setPlayers(prev => ({ 
+                  ...prev, 
+                  [callerId]: { url: incomingStream, muted: false, playing: true, audioEnabled: true, isReconnecting: false } 
+                }));
+                setUsers(prev => ({ ...prev, [callerId]: retryCall }));
               });
+
+              retryCall.on("close", () => handleCloseOrError("closed retry"));
+              retryCall.on("error", (err) => handleCloseOrError(err));
             }
           });
         }
