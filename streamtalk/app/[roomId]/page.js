@@ -215,7 +215,34 @@ const Room = () => {
     if (!socket || !peer || !stream) return;
 
     const attachCallHandlers = (remoteId, call) => {
+      let isConnected = false;
+      let timeoutId;
+
+      const cleanupAndRetry = () => {
+        clearTimeout(timeoutId);
+        console.warn(`Call with ${remoteId} closed or errored, cleaning up and possibly retrying.`);
+        cleanupPeerCall(remoteId, true); // True = Retrying
+
+        if (socket && peer && stream) {
+          schedulePeerCallRetry(remoteId, () => {
+            // Check if player still meant to be in room
+            if (isPeerInRoom(remoteId)) {
+              makeCall(remoteId);
+            }
+          });
+        }
+      };
+
+      timeoutId = setTimeout(() => {
+        if (!isConnected && isPeerInRoom(remoteId)) {
+          console.warn(`⏳ Connection to ${remoteId} timed out. Forcing retry.`);
+          cleanupAndRetry();
+        }
+      }, 5000);
+
       call.on("stream", (incomingStream) => {
+        clearTimeout(timeoutId);
+        isConnected = true;
         console.log(`incoming stream from ${remoteId}`);
         if (callState.current[remoteId]) {
           callState.current[remoteId].retryCount = 0;
@@ -237,20 +264,6 @@ const Room = () => {
           [remoteId]: call,
         }));
       });
-
-      const cleanupAndRetry = () => {
-        console.warn(`Call with ${remoteId} closed or errored, cleaning up and possibly retrying.`);
-        cleanupPeerCall(remoteId, true); // True = Retrying
-
-        if (socket && peer && stream) {
-          schedulePeerCallRetry(remoteId, () => {
-            // Check if player still meant to be in room
-            if (isPeerInRoom(remoteId)) {
-              makeCall(remoteId);
-            }
-          });
-        }
-      };
 
       call.on("close", cleanupAndRetry);
       call.on("error", (err) => {
@@ -387,8 +400,17 @@ const Room = () => {
           schedulePeerCallRetry(callerId, () => {
             if (peer && stream && isPeerInRoom(callerId)) {
               const retryCall = peer.call(callerId, stream);
+              let isConnected = false;
+              let timeoutId = setTimeout(() => {
+                if (!isConnected && isPeerInRoom(callerId)) {
+                   console.warn(`⏳ Incoming retry to ${callerId} timed out. Forcing failure.`);
+                   handleCloseOrError("timeout retry");
+                }
+              }, 5000);
               
               retryCall.on("stream", (incomingStream) => {
+                clearTimeout(timeoutId);
+                isConnected = true;
                 if (callState.current[callerId]) {
                   callState.current[callerId].retryCount = 0;
                 } else {
@@ -401,8 +423,14 @@ const Room = () => {
                 setUsers(prev => ({ ...prev, [callerId]: retryCall }));
               });
 
-              retryCall.on("close", () => handleCloseOrError("closed retry"));
-              retryCall.on("error", (err) => handleCloseOrError(err));
+              retryCall.on("close", () => {
+                 clearTimeout(timeoutId);
+                 handleCloseOrError("closed retry");
+              });
+              retryCall.on("error", (err) => {
+                 clearTimeout(timeoutId);
+                 handleCloseOrError(err);
+              });
             }
           });
         }
