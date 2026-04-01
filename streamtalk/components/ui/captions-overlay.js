@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Volume2, Loader2, Link2Off, Send, X, Mic } from "lucide-react";
 
-export default function CaptionsOverlay({ captions, aiStatus, aiBuffer, aiEmotion, onApprove, onClear, isSpeechEnabled, interimTranscript }) {
+export default function CaptionsOverlay({ captions, aiStatus, aiBuffer, aiEmotion, onApprove, onClear, isSpeechEnabled, interimTranscript, myId }) {
   // TTS Playback Reference
   const synthRef = useRef(null);
 
@@ -88,31 +88,44 @@ export default function CaptionsOverlay({ captions, aiStatus, aiBuffer, aiEmotio
         </div>
       )}
 
-      {/* Actual Captions Area */}
-      <div className="w-full flex flex-col gap-2">
-        {displayCaptions.map((cap) => (
+      <div className="w-full flex flex-col gap-3">
+        {displayCaptions.map((cap) => {
+          const isMine = myId && cap.senderId === myId;
+          return (
           <div 
             key={cap.id} 
-            className="flex items-center gap-3 bg-black/70 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-2xl transition-all duration-300 transform translate-y-0 opacity-100 pointer-events-auto hover:bg-black/80"
+            className={`flex flex-col gap-1.5 backdrop-blur-md border rounded-2xl p-4 shadow-2xl transition-all duration-300 transform translate-y-0 opacity-100 pointer-events-auto hover:brightness-110 ${
+              isMine 
+                ? "bg-indigo-950/80 border-indigo-500/30 self-end ml-16 rounded-tr-md" 
+                : "bg-slate-900/80 border-slate-600/30 self-start mr-16 rounded-tl-md"
+            }`}
           >
-            <div className="flex-1 text-center font-medium text-lg tracking-wide text-white drop-shadow-md">
-              &quot;{cap.text}&quot;
-              {cap.emotion && cap.emotion !== "Neutral" && (
-                <span className="ml-2 text-sm text-gray-300 italic opacity-80 border border-white/20 px-2 py-0.5 rounded-full">
-                  ({cap.emotion})
-                </span>
-              )}
+            <div className={`text-xs font-semibold tracking-wider uppercase opacity-75 flex items-center gap-1.5 ${isMine ? "text-indigo-200 justify-end" : "text-emerald-300 justify-start"}`}>
+              {isMine ? "You" : `User ${cap.senderId ? cap.senderId.substring(0,5) : "Unknown"}`}
             </div>
 
-            <button
-              onClick={() => playTTS(cap.text, cap.emotion)}
-              className="p-3 rounded-full bg-indigo-600/40 hover:bg-indigo-500 transition-colors tooltip-trigger"
-              title="Play Text-to-Speech"
-            >
-              <Volume2 className="w-5 h-5 text-white" />
-            </button>
+            <div className={`flex items-start gap-4 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+              <div className={`flex-1 font-medium text-lg md:text-xl tracking-wide text-white drop-shadow-md ${isMine ? "text-right" : "text-left"}`}>
+                &quot;{cap.text}&quot;
+                {cap.emotion && cap.emotion !== "Neutral" && (
+                  <span className={`block mt-1 text-sm italic opacity-80 ${isMine ? "text-indigo-300" : "text-slate-300"}`}>
+                    ({cap.emotion})
+                  </span>
+                )}
+              </div>
+
+              <button
+                onClick={() => playTTS(cap.text, cap.emotion)}
+                className={`p-2.5 rounded-full transition-colors flex-shrink-0 mt-1 ${
+                  isMine ? "bg-indigo-600/50 hover:bg-indigo-500" : "bg-slate-700/60 hover:bg-slate-600"
+                }`}
+                title="Play Text-to-Speech"
+              >
+                <Volume2 className="w-5 h-5 text-white" />
+              </button>
+            </div>
           </div>
-        ))}
+        )})}
       </div>
     </div>
   );

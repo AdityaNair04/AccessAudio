@@ -558,6 +558,7 @@ const Room = () => {
               onClear={clearBuffer}
               isSpeechEnabled={isSpeechEnabled}
               interimTranscript={interimTranscript}
+              myId={myId}
             />
           </div>
 
