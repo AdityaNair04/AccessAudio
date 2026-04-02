@@ -264,7 +264,7 @@ const Room = () => {
         return;
       }
 
-      const outgoingStream = activeStream || stream;
+      const outgoingStream = stream;
       if (!outgoingStream) {
         console.warn("No outgoing stream available for makeCall");
         return;
@@ -287,7 +287,7 @@ const Room = () => {
     return () => {
       socket.off("user-connected", handleUserConnected);
     };
-  }, [peer, setPlayers, socket, stream, users, myId, activeStream]);
+  }, [peer, setPlayers, socket, stream, users, myId]);
 
   useEffect(() => {
     if (!socket) return;
@@ -359,7 +359,7 @@ const Room = () => {
     const handleIncomingCall = (call) => {
       const callerId = call.peer;
       console.log(`✔️ Incoming call from ${callerId}`);
-      call.answer(activeStream || stream);
+      call.answer(stream);
 
       call.on("stream", (incomingStream) => {
         console.log(`incoming stream from ${callerId}`);
