@@ -186,21 +186,6 @@ const Room = () => {
     return () => clearInterval(timer);
   }, [callStartTime]);
 
-  // Add yourself to players when stream is ready
-  useEffect(() => {
-    if (myId && stream && !isScreenSharing) {
-      setPlayers((prev) => ({
-        ...prev,
-        [myId]: {
-          url: stream,
-          muted: true, // Always mute own audio to prevent feedback
-          playing: isVideoEnabled,
-          audioEnabled: isAudioEnabled, // Track actual audio state
-        },
-      }));
-    }
-  }, [myId, stream, isAudioEnabled, isVideoEnabled, isScreenSharing, setPlayers]);
-
   // Enhanced retry media stream with audio diagnostics
   const retryMediaStream = async () => {
     if (process.env.NODE_ENV === "development") {
@@ -378,18 +363,6 @@ const Room = () => {
 
       call.on("stream", (incomingStream) => {
         console.log(`incoming stream from ${callerId}`);
-
-        // Detect screen share stream from remote user by track label inspection
-        const videoTrack = incomingStream.getVideoTracks()[0];
-        const isRemoteScreenShare =
-          videoTrack &&
-          videoTrack.label &&
-          /screen|display|window/i.test(videoTrack.label);
-
-        if (isRemoteScreenShare) {
-          console.log(`🖥️ Remote screen share detected for ${callerId}`);
-          setScreenSharePeerId(callerId);
-        }
 
         if (callState.current[callerId]) {
           callState.current[callerId].retryCount = 0;

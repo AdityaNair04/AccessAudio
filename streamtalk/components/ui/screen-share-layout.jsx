@@ -118,7 +118,10 @@ const ScreenShareLayout = memo(({
       {/* Stop Screen Share Button - Top Right (for presenter) */}
       {isMyScreenShare && (
         <button
-          onClick={onStopScreenShare}
+          onClick={() => {
+            console.log("🖱️ screen-share-layout stop button clicked");
+            onStopScreenShare();
+          }}
           className="absolute top-4 right-4 z-30 p-3 bg-red-500/90 hover:bg-red-600 text-white rounded-full shadow-lg transition-all duration-200 hover:scale-110"
           title="Stop screen share"
         >
