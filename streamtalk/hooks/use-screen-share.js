@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 
 /**
  * Custom hook for managing screen sharing in WebRTC peer connections
@@ -28,6 +28,7 @@ const useScreenShare = (
   const [screenShareError, setScreenShareError] = useState(null);
   const screenStreamRef = useRef(null);
   const originalVideoTrackRef = useRef(null);
+  const stopScreenShareRef = useRef(null);
 
   const activeStream = useMemo(() => {
     if (isScreenSharing && screenStreamRef.current) {
@@ -118,7 +119,10 @@ const useScreenShare = (
 
       screenVideoTrack.onended = async () => {
         console.log("🖥️ Screen share track ended");
-        await stopScreenShare();
+        const stopFn = stopScreenShareRef.current;
+        if (typeof stopFn === "function") {
+          await stopFn();
+        }
       };
 
       onLocalStreamUpdate(displayStream);
@@ -141,7 +145,7 @@ const useScreenShare = (
       }
       return false;
     }
-  }, [cameraStream, myId, roomId, socket, onLocalStreamUpdate, onScreenShareStatusChange, replaceTrackOnPeers, stopScreenShare]);
+  }, [cameraStream, myId, roomId, socket, onLocalStreamUpdate, onScreenShareStatusChange, replaceTrackOnPeers]);
 
   /**
    * Stop screen sharing
@@ -197,6 +201,10 @@ const useScreenShare = (
       return await startScreenShare();
     }
   }, [isScreenSharing, startScreenShare, stopScreenShare]);
+
+  useEffect(() => {
+    stopScreenShareRef.current = stopScreenShare;
+  }, [stopScreenShare]);
 
   // Cleanup on unmount
   const cleanup = useCallback(() => {
