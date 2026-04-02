@@ -9,7 +9,6 @@ import usePeer from "@/hooks/use-peer";
 import useMediaStream from "@/hooks/use-media-stream";
 import usePlayer from "@/hooks/use-player";
 import useChat from "@/hooks/use-chat";
-import useScreenShare from "@/hooks/use-screen-share";
 
 import CopySection from "@/components/copy-section";
 
@@ -23,7 +22,6 @@ import FloatingControls from "@/components/ui/floating-controls";
 import SimpleVideoGrid from "@/components/ui/simple-video-grid";
 import SimpleChat from "@/components/ui/simple-chat";
 import PermissionRequest from "@/components/ui/permission-request";
-import ScreenShareLayout from "@/components/ui/screen-share-layout";
 
 const Room = () => {
   const socket = useSocket();
@@ -64,40 +62,7 @@ const Room = () => {
   const [showTroubleshooter, setShowTroubleshooter] = useState(false);
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
   const [isAvatarEnabled, setIsAvatarEnabled] = useState(false);
-  const [screenSharePeerId, setScreenSharePeerId] = useState(null);
   const avatarIframeRef = useRef(null);
-
-  // Initialize screen sharing
-  const {
-    isScreenSharing,
-    screenShareError,
-    localScreenStream,
-    toggleScreenShare,
-    cleanup: cleanupScreenShare,
-    activeStream,
-  } = useScreenShare(
-    stream,
-    users,
-    socket,
-    myId,
-    roomId,
-    (status, peerId) => {
-      if (status === "start") {
-        setScreenSharePeerId(peerId);
-      } else if (status === "stop") {
-        setScreenSharePeerId(null);
-      }
-    },
-    (updatedStream) => {
-      setPlayers((prev) => ({
-        ...prev,
-        [myId]: {
-          ...prev[myId],
-          url: updatedStream,
-        },
-      }));
-    }
-  );
 
   const callState = useRef({});
   const CALL_RETRY_MAX = 4;
@@ -395,35 +360,13 @@ const Room = () => {
     socket.on("user-toggle-video", handleToggleVideo);
     socket.on("user-leave", handleUserLeave);
 
-    const handleScreenShareStart = (userId) => {
-      console.log(`🖥️ Screen share started by ${userId}`);
-      if (userId === myId) {
-        console.log("🛡️ Ignored own screen share start event in page-level listener");
-        return;
-      }
-      setScreenSharePeerId(userId);
-    };
-
-    const handleScreenShareStop = (userId) => {
-      console.log(`📷 Screen share stopped by ${userId}`);
-      if (userId === myId) {
-        console.log("🛡️ Ignored own screen share stop event in page-level listener");
-        return;
-      }
-      setScreenSharePeerId((currentId) => (currentId === userId ? null : currentId));
-    };
-
-    socket.on("user-screen-share-start", handleScreenShareStart);
-    socket.on("user-screen-share-stop", handleScreenShareStop);
 
     return () => {
       socket.off("user-toggle-audio", handleToggleAudio);
       socket.off("user-toggle-video", handleToggleVideo);
       socket.off("user-leave", handleUserLeave);
-      socket.off("user-screen-share-start", handleScreenShareStart);
-      socket.off("user-screen-share-stop", handleScreenShareStop);
     };
-  }, [players, setPlayers, socket, users, cleanupPeerDataChannel, screenSharePeerId]);
+  }, [players, setPlayers, socket, users, cleanupPeerDataChannel]);
 
   useEffect(() => {
     if (!peer || !stream) return;
@@ -525,7 +468,7 @@ const Room = () => {
   }, [peer, setPlayers, stream, socket]);
 
   useEffect(() => {
-    if (!stream || !myId || isScreenSharing) return;
+    if (!stream || !myId) return;
 
     console.log(`setting my stream ${myId}`);
     setPlayers((prev) => ({
@@ -536,7 +479,7 @@ const Room = () => {
         playing: isVideoEnabled, // Use actual video state
       },
     }));
-  }, [myId, setPlayers, stream, isVideoEnabled, isScreenSharing]); // Prevent override during screen share
+  }, [myId, setPlayers, stream, isVideoEnabled]);
 
   // Apply audio output device to all players when it changes
   useEffect(() => {
@@ -552,15 +495,6 @@ const Room = () => {
       });
     }
   }, [selectedAudioOutput]);
-
-  // Cleanup screen share on component unmount
-  useEffect(() => {
-    return () => {
-      if (cleanupScreenShare) {
-        cleanupScreenShare();
-      }
-    };
-  }, [cleanupScreenShare]);
 
   return (
     <>
@@ -614,49 +548,21 @@ const Room = () => {
 
           {/* Video Grid / Screen Share Layout */}
           <div className="flex-1 w-full p-4 overflow-hidden relative">
-            {(() => {
-              const activeScreenPlayer =
-                screenSharePeerId === myId
-                  ? {
-                      url: localScreenStream,
-                      muted: true,
-                      playing: isScreenSharing,
-                    }
-                  : players[screenSharePeerId];
-
-              if (screenSharePeerId && activeScreenPlayer) {
-                return (
-                  <ScreenShareLayout
-                    screenPlayer={activeScreenPlayer}
-                    sharingPeerId={screenSharePeerId}
-                    myId={myId}
-                    players={players}
-                    onStopScreenShare={toggleScreenShare}
-                    selectedAudioOutput={selectedAudioOutput}
-                  />
-                );
+            <SimpleVideoGrid
+              players={players}
+              highlightedPlayerId={
+                playerHighlighted
+                  ? Object.keys(players).find((id) => players[id] === playerHighlighted)
+                  : null
               }
-
-              return (
-                <SimpleVideoGrid
-                  players={players}
-                  highlightedPlayerId={
-                    playerHighlighted
-                      ? Object.keys(players).find(
-                          (id) => players[id] === playerHighlighted
-                        )
-                      : null
-                  }
-                  onPlayerClick={(playerId) => {
-                    console.log(`Player ${playerId} clicked`);
-                  }}
-                  myId={myId}
-                  isAudioEnabled={isAudioEnabled}
-                  selectedAudioOutput={selectedAudioOutput}
-                  className="h-full"
-                />
-              );
-            })()}
+              onPlayerClick={(playerId) => {
+                console.log(`Player ${playerId} clicked`);
+              }}
+              myId={myId}
+              isAudioEnabled={isAudioEnabled}
+              selectedAudioOutput={selectedAudioOutput}
+              className="h-full"
+            />
           </div>
 
           {/* Global Captions UI Overlay - Flex-stacked below the video grid */}
@@ -693,9 +599,6 @@ const Room = () => {
             toggleSpeechToText={() => setIsSpeechEnabled(!isSpeechEnabled)}
             isAvatarEnabled={isAvatarEnabled}
             toggleAvatar={() => setIsAvatarEnabled(!isAvatarEnabled)}
-            isScreenSharing={isScreenSharing}
-            toggleScreenShare={toggleScreenShare}
-            screenShareError={screenShareError}
           />
         )}
 

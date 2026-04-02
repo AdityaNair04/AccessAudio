@@ -11,9 +11,6 @@ const FloatingControls = ({
   toggleSpeechToText,
   isAvatarEnabled,
   toggleAvatar,
-  isScreenSharing,
-  toggleScreenShare,
-  screenShareError,
 }) => {
   return (
     <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
@@ -45,23 +42,6 @@ const FloatingControls = ({
           {!playing ? <VideoOff size={18} /> : <Video size={18} />}
         </button>
 
-        {/* Screen Share Control */}
-        <button
-          onClick={toggleScreenShare}
-          className={`p-3 rounded-2xl transition-all duration-200 shadow-lg relative ${
-            isScreenSharing
-              ? "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white transform hover:scale-105"
-              : "bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 text-gray-200 hover:text-white"
-          }`}
-          title={isScreenSharing ? "Stop screen share" : "Share your screen"}
-        >
-          {isScreenSharing ? <Monitor size={18} /> : <MonitorOff size={18} />}
-          {screenShareError && (
-            <span className="absolute -top-8 left-0 bg-red-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-              {screenShareError.substring(0, 15)}...
-            </span>
-          )}
-        </button>
 
         {/* Leave Call */}
         <button
