@@ -15,8 +15,10 @@ const MediaStreamPlayer = ({
     const video = videoRef.current;
     if (!video) return;
 
-    if (video.srcObject !== stream) {
-      video.srcObject = stream || null;
+    if (stream && video.srcObject !== stream) {
+      video.srcObject = stream;
+    } else if (!stream && video.srcObject) {
+      video.srcObject = null;
     }
 
     if (!stream || !playing) {
@@ -45,6 +47,7 @@ const MediaStreamPlayer = ({
 
     return () => {
       if (video && video.srcObject === stream) {
+        video.pause();
         video.srcObject = null;
       }
     };

@@ -26,9 +26,16 @@ const useScreenShare = (
 ) => {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [screenShareError, setScreenShareError] = useState(null);
+  const [localScreenStream, setLocalScreenStream] = useState(null);
+
   const screenStreamRef = useRef(null);
   const originalVideoTrackRef = useRef(null);
   const stopScreenShareRef = useRef(null);
+  const isScreenSharingRef = useRef(false);
+
+  useEffect(() => {
+    isScreenSharingRef.current = isScreenSharing;
+  }, [isScreenSharing]);
 
   const activeStream = useMemo(() => {
     if (isScreenSharing && screenStreamRef.current) {
@@ -110,6 +117,10 @@ const useScreenShare = (
 
       await replaceTrackOnPeers(screenVideoTrack);
 
+      setIsScreenSharing(true);
+      setLocalScreenStream(displayStream);
+
+      onLocalStreamUpdate(displayStream);
       onScreenShareStatusChange("start", myId);
 
       if (socket && myId && roomId) {
@@ -117,16 +128,19 @@ const useScreenShare = (
         console.log(`📡 Emitted screen share start for ${myId} to room ${roomId}`);
       }
 
-      setIsScreenSharing(true);
       screenVideoTrack.onended = async () => {
-        console.log("🖥️ Screen share track ended");
+        console.warn("🖥️ Screen share track ended event (maybe user closed native screen share)");
+        if (!isScreenSharingRef.current) {
+          console.warn("🛡️ Ignoring onended as isScreenSharing is already false");
+          return;
+        }
+
         const stopFn = stopScreenShareRef.current;
         if (typeof stopFn === "function") {
           await stopFn();
         }
       };
 
-      onLocalStreamUpdate(displayStream);
       setScreenShareError(null);
       console.log("✅ Screen share started successfully");
       return true;
@@ -154,13 +168,16 @@ const useScreenShare = (
    * Broadcasts screen share stop to other peers
    */
   const stopScreenShare = useCallback(async () => {
-    if (!isScreenSharing || !originalVideoTrackRef.current) {
+    if (!isScreenSharingRef.current || !originalVideoTrackRef.current) {
       console.warn("⚠️ Screen share not active");
       return false;
     }
 
     try {
       console.log("🖥️ Stopping screen share...");
+
+      setIsScreenSharing(false);
+      setLocalScreenStream(null);
 
       const cameraVideoTrack = originalVideoTrackRef.current;
 
@@ -180,7 +197,6 @@ const useScreenShare = (
 
       originalVideoTrackRef.current = null;
       onLocalStreamUpdate(cameraStream);
-      setIsScreenSharing(false);
       setScreenShareError(null);
       console.log("✅ Screen share stopped successfully");
       return true;
@@ -189,7 +205,7 @@ const useScreenShare = (
       setScreenShareError(error.message || String(error));
       return false;
     }
-  }, [isScreenSharing, cameraStream, myId, roomId, socket, onLocalStreamUpdate, onScreenShareStatusChange, replaceTrackOnPeers]);
+  }, [cameraStream, myId, roomId, socket, onLocalStreamUpdate, onScreenShareStatusChange, replaceTrackOnPeers]);
 
   /**
    * Toggle screen share on/off
@@ -219,6 +235,7 @@ const useScreenShare = (
   return {
     isScreenSharing,
     screenShareError,
+    localScreenStream,
     startScreenShare,
     stopScreenShare,
     toggleScreenShare,

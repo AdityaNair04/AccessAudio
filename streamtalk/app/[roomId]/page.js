@@ -71,6 +71,7 @@ const Room = () => {
   const {
     isScreenSharing,
     screenShareError,
+    localScreenStream,
     toggleScreenShare,
     cleanup: cleanupScreenShare,
     activeStream,
@@ -396,11 +397,19 @@ const Room = () => {
 
     const handleScreenShareStart = (userId) => {
       console.log(`🖥️ Screen share started by ${userId}`);
+      if (userId === myId && isScreenSharing) {
+        console.log("🛡️ Ignored duplicate self screen share start event");
+        return;
+      }
       setScreenSharePeerId(userId);
     };
 
     const handleScreenShareStop = (userId) => {
       console.log(`📷 Screen share stopped by ${userId}`);
+      if (userId === myId && isScreenSharing) {
+        console.log("🛡️ Ignored self stop event while local screen share is active");
+        return;
+      }
       setScreenSharePeerId((currentId) => (currentId === userId ? null : currentId));
     };
 
@@ -605,36 +614,49 @@ const Room = () => {
 
           {/* Video Grid / Screen Share Layout */}
           <div className="flex-1 w-full p-4 overflow-hidden relative">
-            {screenSharePeerId && players[screenSharePeerId] ? (
-              // Screen Share Mode
-              <ScreenShareLayout
-                screenPlayer={players[screenSharePeerId]}
-                sharingPeerId={screenSharePeerId}
-                myId={myId}
-                players={players}
-                onStopScreenShare={toggleScreenShare}
-                selectedAudioOutput={selectedAudioOutput}
-              />
-            ) : (
-              // Normal Grid Mode
-              <SimpleVideoGrid
-                players={players}
-                highlightedPlayerId={
-                  playerHighlighted
-                    ? Object.keys(players).find(
-                        (id) => players[id] === playerHighlighted
-                      )
-                    : null
-                }
-                onPlayerClick={(playerId) => {
-                  console.log(`Player ${playerId} clicked`);
-                }}
-                myId={myId}
-                isAudioEnabled={isAudioEnabled} 
-                selectedAudioOutput={selectedAudioOutput} 
-                className="h-full"
-              />
-            )}
+            {(() => {
+              const activeScreenPlayer =
+                screenSharePeerId === myId
+                  ? {
+                      url: localScreenStream,
+                      muted: true,
+                      playing: isScreenSharing,
+                    }
+                  : players[screenSharePeerId];
+
+              if (screenSharePeerId && activeScreenPlayer) {
+                return (
+                  <ScreenShareLayout
+                    screenPlayer={activeScreenPlayer}
+                    sharingPeerId={screenSharePeerId}
+                    myId={myId}
+                    players={players}
+                    onStopScreenShare={toggleScreenShare}
+                    selectedAudioOutput={selectedAudioOutput}
+                  />
+                );
+              }
+
+              return (
+                <SimpleVideoGrid
+                  players={players}
+                  highlightedPlayerId={
+                    playerHighlighted
+                      ? Object.keys(players).find(
+                          (id) => players[id] === playerHighlighted
+                        )
+                      : null
+                  }
+                  onPlayerClick={(playerId) => {
+                    console.log(`Player ${playerId} clicked`);
+                  }}
+                  myId={myId}
+                  isAudioEnabled={isAudioEnabled}
+                  selectedAudioOutput={selectedAudioOutput}
+                  className="h-full"
+                />
+              );
+            })()}
           </div>
 
           {/* Global Captions UI Overlay - Flex-stacked below the video grid */}
