@@ -19,6 +19,10 @@ const useChat = (peer, myId, users = {}) => {
   const [connectedPeers, setConnectedPeers] = useState(new Set());
   
   const connectionCreationRef = useRef(new Set());
+  const heartbeatIntervalRef = useRef({});
+  const lastHeartbeatRef = useRef({});
+  const reconnectAttemptsRef = useRef({});
+  const reconnectTimeoutRef = useRef({});
 
   const addMessage = useCallback((message) => {
     const newMessage = {
@@ -97,11 +101,114 @@ const useChat = (peer, myId, users = {}) => {
         if (data.senderId && data.text && data.id) addMessage(data);
       } else if (data.type === 'caption') {
         if (data.senderId && data.text) addCaption(data);
+      } else if (data.type === 'heartbeat-ping') {
+        // Update last heartbeat timestamp and respond with pong
+        // Don't log every heartbeat to reduce noise
+      } else if (data.type === 'heartbeat-pong') {
+        // Just acknowledge received
       }
     } catch (error) {
       console.error('Error handling incoming data:', error);
     }
   }, [addMessage, addCaption]);
+
+  // Send heartbeat to keep connection alive
+  const sendHeartbeat = useCallback((conn, peerId) => {
+    try {
+      if (conn && conn.open) {
+        conn.send({ type: 'heartbeat-ping', timestamp: Date.now() });
+        lastHeartbeatRef.current[peerId] = Date.now();
+      }
+    } catch (error) {
+      console.warn(`Failed to send heartbeat to ${peerId}:`, error.message);
+    }
+  }, []);
+
+  // Check for stale connections and trigger reconnect
+  const checkConnectionHealth = useCallback((peerId) => {
+    const conn = dataConnections[peerId];
+    if (!conn || !conn.open) return;
+
+    const lastHeartbeat = lastHeartbeatRef.current[peerId] || Date.now();
+    const timeSinceLastHeartbeat = Date.now() - lastHeartbeat;
+
+    // If no heartbeat ack in 10 seconds, connection is stale
+    if (timeSinceLastHeartbeat > 10000) {
+      console.warn(`⚠️ Stale data connection detected for ${peerId} (no ack for ${timeSinceLastHeartbeat}ms). Reconnecting...`);
+      try {
+        conn.close();
+      } catch (e) {}
+      setDataConnections(prev => {
+        const updated = cloneDeep(prev);
+        delete updated[peerId];
+        return updated;
+      });
+      // Trigger reconnection
+      scheduleDataChannelReconnect(peerId);
+    }
+  }, [dataConnections]);
+
+  // Schedule reconnection with exponential backoff (same as call retry)
+  const scheduleDataChannelReconnect = useCallback((peerId) => {
+    if (reconnectTimeoutRef.current[peerId]) {
+      clearTimeout(reconnectTimeoutRef.current[peerId]);
+    }
+
+    const attempts = reconnectAttemptsRef.current[peerId] || 0;
+    const MAX_RECONNECT_ATTEMPTS = 4;
+
+    if (attempts >= MAX_RECONNECT_ATTEMPTS) {
+      console.warn(`📍 Data channel to ${peerId} exceeded reconnect attempts (${MAX_RECONNECT_ATTEMPTS})`);
+      reconnectAttemptsRef.current[peerId] = 0;
+      return;
+    }
+
+    const baseDelay = 1200; // Match call retry base delay
+    const delay = baseDelay * (attempts + 1);
+
+    reconnectAttemptsRef.current[peerId] = attempts + 1;
+    console.log(`🔄 Scheduling data channel reconnect for ${peerId} in ${delay}ms (attempt ${attempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+
+    reconnectTimeoutRef.current[peerId] = setTimeout(() => {
+      if (peer && myId && users[peerId]) {
+        console.log(`♻️ Attempting data channel reconnect to ${peerId}...`);
+        // Trigger reconnection by creating new connection if ID ordering permits
+        if (myId > peerId) {
+          const conn = peer.connect(peerId, { reliable: true });
+          setupDataConnectionEvents(conn, peerId);
+        }
+      }
+    }, delay);
+  }, [peer, myId, users]);
+
+  // Start heartbeat interval for a connection
+  const startHeartbeat = useCallback((peerId) => {
+    if (heartbeatIntervalRef.current[peerId]) {
+      clearInterval(heartbeatIntervalRef.current[peerId]);
+    }
+
+    // Send heartbeat every 5 seconds
+    heartbeatIntervalRef.current[peerId] = setInterval(() => {
+      const conn = dataConnections[peerId];
+      sendHeartbeat(conn, peerId);
+      // Also check health every heartbeat cycle
+      checkConnectionHealth(peerId);
+    }, 5000);
+
+    lastHeartbeatRef.current[peerId] = Date.now();
+  }, [dataConnections, sendHeartbeat, checkConnectionHealth]);
+
+  // Stop heartbeat interval
+  const stopHeartbeat = useCallback((peerId) => {
+    if (heartbeatIntervalRef.current[peerId]) {
+      clearInterval(heartbeatIntervalRef.current[peerId]);
+      delete heartbeatIntervalRef.current[peerId];
+    }
+    if (reconnectTimeoutRef.current[peerId]) {
+      clearTimeout(reconnectTimeoutRef.current[peerId]);
+      delete reconnectTimeoutRef.current[peerId];
+    }
+  }, []);
 
   // Bind events to a verified DataConnection seamlessly
   const setupDataConnectionEvents = useCallback((conn, peerId) => {
@@ -109,12 +216,25 @@ const useChat = (peer, myId, users = {}) => {
       console.log(`💬 Data connection natively opened with peer ${peerId}`);
       setDataConnections(prev => ({ ...prev, [peerId]: conn }));
       setConnectedPeers(prev => new Set([...prev, peerId]));
+      
+      // Reset reconnection attempts on successful connection
+      reconnectAttemptsRef.current[peerId] = 0;
+      
+      // Start heartbeat to keep connection alive
+      startHeartbeat(peerId);
+      
+      // Send initial heartbeat immediately
+      sendHeartbeat(conn, peerId);
     });
 
     conn.on('data', handleIncomingData);
 
     conn.on('close', () => {
       console.log(`💬 Data connection closed with peer ${peerId}`);
+      
+      // Stop heartbeat first
+      stopHeartbeat(peerId);
+      
       setDataConnections(prev => {
         const updated = cloneDeep(prev);
         delete updated[peerId];
@@ -126,12 +246,24 @@ const useChat = (peer, myId, users = {}) => {
         return updated;
       });
       connectionCreationRef.current.delete(`${myId}-${peerId}`);
+      
+      // Attempt reconnection if this wasn't an intentional cleanup
+      if (!reconnectAttemptsRef.current[peerId] || reconnectAttemptsRef.current[peerId] < 4) {
+        scheduleDataChannelReconnect(peerId);
+      }
     });
 
     conn.on('error', (err) => {
       console.error(`💬 Data connection error with peer ${peerId}:`, err);
+      // Don't immediately close, let PeerJS handle it
+      // Only trigger reconnect if the connection hasn't already closed
+      if (conn.open) {
+        try {
+          conn.close();
+        } catch (e) {}
+      }
     });
-  }, [myId, handleIncomingData]);
+  }, [myId, handleIncomingData, startHeartbeat, stopHeartbeat, scheduleDataChannelReconnect, sendHeartbeat]);
 
   // 1. Listen for ALL INCOMING DataConnections from other remote peers globally
   useEffect(() => {
@@ -175,6 +307,9 @@ const useChat = (peer, myId, users = {}) => {
       try { conn.close(); } catch (e) {}
     }
 
+    // Stop heartbeat
+    stopHeartbeat(peerId);
+
     setDataConnections(prev => {
       const updated = cloneDeep(prev);
       delete updated[peerId];
@@ -188,7 +323,7 @@ const useChat = (peer, myId, users = {}) => {
     });
 
     connectionCreationRef.current.delete(`${myId}-${peerId}`);
-  }, [dataConnections, myId]);
+  }, [dataConnections, myId, stopHeartbeat]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
@@ -196,11 +331,22 @@ const useChat = (peer, myId, users = {}) => {
 
   useEffect(() => {
     return () => {
+      // Stop all heartbeats
+      Object.keys(heartbeatIntervalRef.current).forEach(peerId => {
+        stopHeartbeat(peerId);
+      });
+      
+      // Cancel all pending reconnects
+      Object.keys(reconnectTimeoutRef.current).forEach(peerId => {
+        clearTimeout(reconnectTimeoutRef.current[peerId]);
+      });
+      
+      // Close all connections
       Object.entries(dataConnections).forEach(([peerId, conn]) => {
         try { conn.close(); } catch (e) {}
       });
     };
-  }, []);
+  }, [dataConnections, stopHeartbeat]);
 
   return {
     messages,

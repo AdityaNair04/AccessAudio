@@ -9,6 +9,7 @@ const usePeer = () => {
   const [peer, setPeer] = useState(null);
   const [myId, setMyId] = useState("");
   const isPeerSet = useRef(false);
+  const peerHealthCheckRef = useRef(null);
 
   useEffect(() => {
     if (isPeerSet.current || !roomId || !socket) return;
@@ -54,6 +55,26 @@ const usePeer = () => {
           console.log("✅ PeerJS connected! Your peer ID:", id);
           setMyId(id);
 
+          // Start health check to detect connection drops early
+          if (peerHealthCheckRef.current) {
+            clearInterval(peerHealthCheckRef.current);
+          }
+          peerHealthCheckRef.current = setInterval(() => {
+            if (myPeer.destroyed) {
+              console.warn("⚠️ Peer instance destroyed, recreating...");
+              clearInterval(peerHealthCheckRef.current);
+              isPeerSet.current = false;
+              initPeer();
+              return;
+            }
+            if (!myPeer.open) {
+              console.warn("⚠️ Peer connection lost, attempting to recover...");
+              if (myPeer.disconnected) {
+                myPeer.reconnect();
+              }
+            }
+          }, 3000); // Check every 3 seconds
+
           // Always try to join room - socket will handle connection state
           console.log("📡 Joining room:", roomId, "with peer ID:", id);
           socket.emit("join-room", roomId, id);
@@ -76,6 +97,11 @@ const usePeer = () => {
             myPeer.reconnect();
           }
         });
+
+        myPeer.on("close", () => {
+          console.warn("❌ PeerJS connection fully closed");
+          clearInterval(peerHealthCheckRef.current);
+        });
       } catch (error) {
         console.error("❌ Failed to initialize PeerJS:", error);
         isPeerSet.current = false; // Allow retry
@@ -86,6 +112,9 @@ const usePeer = () => {
 
     // Cleanup function
     return () => {
+      if (peerHealthCheckRef.current) {
+        clearInterval(peerHealthCheckRef.current);
+      }
       if (myPeer && !myPeer.destroyed) {
         console.log("🧹 Cleaning up PeerJS connection...");
         myPeer.destroy();
