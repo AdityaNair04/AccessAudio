@@ -9,6 +9,7 @@ import usePeer from "@/hooks/use-peer";
 import useMediaStream from "@/hooks/use-media-stream";
 import usePlayer from "@/hooks/use-player";
 import useChat from "@/hooks/use-chat";
+import useScreenShare from "@/hooks/use-screen-share";
 
 import CopySection from "@/components/copy-section";
 
@@ -63,6 +64,14 @@ const Room = () => {
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
   const [isAvatarEnabled, setIsAvatarEnabled] = useState(false);
   const avatarIframeRef = useRef(null);
+
+  // Initialize screen sharing
+  const {
+    isScreenSharing,
+    screenShareError,
+    toggleScreenShare,
+    cleanup: cleanupScreenShare,
+  } = useScreenShare(stream, users);
 
   const callState = useRef({});
   const CALL_RETRY_MAX = 4;
@@ -476,6 +485,15 @@ const Room = () => {
     }
   }, [selectedAudioOutput]);
 
+  // Cleanup screen share on component unmount
+  useEffect(() => {
+    return () => {
+      if (cleanupScreenShare) {
+        cleanupScreenShare();
+      }
+    };
+  }, [cleanupScreenShare]);
+
   return (
     <>
       {/* Permission Request Overlay */}
@@ -581,6 +599,9 @@ const Room = () => {
             toggleSpeechToText={() => setIsSpeechEnabled(!isSpeechEnabled)}
             isAvatarEnabled={isAvatarEnabled}
             toggleAvatar={() => setIsAvatarEnabled(!isAvatarEnabled)}
+            isScreenSharing={isScreenSharing}
+            toggleScreenShare={toggleScreenShare}
+            screenShareError={screenShareError}
           />
         )}
 
