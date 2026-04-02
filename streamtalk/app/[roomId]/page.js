@@ -222,7 +222,7 @@ const Room = () => {
 
   // Add yourself to players when stream is ready
   useEffect(() => {
-    if (myId && stream) {
+    if (myId && stream && !isScreenSharing) {
       setPlayers((prev) => ({
         ...prev,
         [myId]: {
@@ -233,7 +233,7 @@ const Room = () => {
         },
       }));
     }
-  }, [myId, stream, isAudioEnabled, isVideoEnabled, setPlayers]);
+  }, [myId, stream, isAudioEnabled, isVideoEnabled, isScreenSharing, setPlayers]);
 
   // Enhanced retry media stream with audio diagnostics
   const retryMediaStream = async () => {
