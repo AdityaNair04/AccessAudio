@@ -32,6 +32,10 @@ const useScreenShare = (
   const originalVideoTrackRef = useRef(null);
   const stopScreenShareRef = useRef(null);
   const isScreenSharingRef = useRef(false);
+  const screenShareRetryCountRef = useRef(0);
+  const screenShareStartTimeRef = useRef(0);
+  const screenShareRecoveryInProgressRef = useRef(false);
+  const MAX_SCREEN_SHARE_RETRIES = 3;
 
   useEffect(() => {
     isScreenSharingRef.current = isScreenSharing;
@@ -119,6 +123,9 @@ const useScreenShare = (
 
       setIsScreenSharing(true);
       setLocalScreenStream(displayStream);
+      screenShareRetryCountRef.current = 0;
+      screenShareStartTimeRef.current = Date.now();
+      screenShareRecoveryInProgressRef.current = false;
 
       onLocalStreamUpdate(displayStream);
       onScreenShareStatusChange("start", myId);
@@ -128,9 +135,58 @@ const useScreenShare = (
         console.log(`📡 Emitted screen share start for ${myId} to room ${roomId}`);
       }
 
+      const elapsedMs = () => Date.now() - screenShareStartTimeRef.current;
+
+      const attemptRecovery = async () => {
+        if (screenShareRecoveryInProgressRef.current) {
+          console.warn("🛡️ Already recovering screen share (concurrent ignore)");
+          return;
+        }
+
+        if (screenShareRetryCountRef.current >= MAX_SCREEN_SHARE_RETRIES) {
+          console.warn("💥 Screen share retries exceeded, will perform normal stop");
+          const stopFn = stopScreenShareRef.current;
+          if (typeof stopFn === "function") {
+            await stopFn();
+          }
+          return;
+        }
+
+        screenShareRecoveryInProgressRef.current = true;
+        screenShareRetryCountRef.current += 1;
+
+        console.warn(
+          `🔁 Attempting screen share recovery (#${screenShareRetryCountRef.current})`
+        );
+
+        // Force cleanup local screen stream and peer track bridge before restart
+        if (screenStreamRef.current) {
+          screenStreamRef.current.getTracks().forEach((track) => track.stop());
+          screenStreamRef.current = null;
+        }
+
+        if (originalVideoTrackRef.current) {
+          await replaceTrackOnPeers(originalVideoTrackRef.current);
+        }
+
+        setIsScreenSharing(false);
+        setLocalScreenStream(null);
+        onLocalStreamUpdate(cameraStream);
+
+        // Re-start screen share in 250ms
+        setTimeout(async () => {
+          try {
+            await startScreenShare();
+          } finally {
+            screenShareRecoveryInProgressRef.current = false;
+          }
+        }, 250);
+      };
+
       screenVideoTrack.onended = async () => {
         console.warn("🖥️ Screen share track ended event", {
           event: "onended",
+          elapsedMs: elapsedMs(),
           readyState: screenVideoTrack.readyState,
           label: screenVideoTrack.label,
           muted: screenVideoTrack.muted,
@@ -147,11 +203,9 @@ const useScreenShare = (
           return;
         }
 
-        // Wait briefly (120ms) to reject transient/duplicate events
-        await new Promise((resolve) => setTimeout(resolve, 120));
-        if (!isScreenSharingRef.current) {
-          console.warn("🛡️ Aborting onended flow after delay: screen share already stopped");
-          return;
+        if (elapsedMs() < 800) {
+          console.warn("⏱️ Screen share ended too early, attempting auto-recovery");
+          return attemptRecovery();
         }
 
         console.warn("🛠️ onended handler will call stopScreenShare now");
@@ -218,6 +272,9 @@ const useScreenShare = (
       console.warn("⚠️ Screen share not active");
       return false;
     }
+
+    screenShareRecoveryInProgressRef.current = false;
+    screenShareRetryCountRef.current = 0;
 
     try {
       console.log("🖥️ Stopping screen share...");
