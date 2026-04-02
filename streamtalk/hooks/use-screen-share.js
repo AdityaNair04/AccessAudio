@@ -129,9 +129,30 @@ const useScreenShare = (
       }
 
       screenVideoTrack.onended = async () => {
-        console.warn("🖥️ Screen share track ended event (maybe user closed native screen share)");
+        console.warn("🖥️ Screen share track ended event", {
+          readyState: screenVideoTrack.readyState,
+          label: screenVideoTrack.label,
+          muted: screenVideoTrack.muted,
+          enabled: screenVideoTrack.enabled,
+        });
+
+        // This can be fired prematurely in some browser/device combos.
+        // Ignore if we are already not in screen-share mode or if track appears still live.
         if (!isScreenSharingRef.current) {
-          console.warn("🛡️ Ignoring onended as isScreenSharing is already false");
+          console.warn("🛡️ Ignoring onended because local screen-share flag is false");
+          return;
+        }
+
+        if (screenVideoTrack.readyState === "live") {
+          console.warn("🛡️ Ignoring onended while track is still live (browser may signal transient end)");
+          return;
+        }
+
+        // Wait briefly to avoid immediate reversal from transient states
+        await new Promise((resolve) => setTimeout(resolve, 120));
+
+        if (!isScreenSharingRef.current) {
+          console.warn("🛡️ Aborting onended flow after delay: screen share already stopped");
           return;
         }
 
