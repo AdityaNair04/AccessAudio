@@ -130,14 +130,13 @@ const useScreenShare = (
 
       screenVideoTrack.onended = async () => {
         console.warn("🖥️ Screen share track ended event", {
+          event: "onended",
           readyState: screenVideoTrack.readyState,
           label: screenVideoTrack.label,
           muted: screenVideoTrack.muted,
           enabled: screenVideoTrack.enabled,
         });
 
-        // This can be fired prematurely in some browser/device combos.
-        // Ignore if we are already not in screen-share mode or if track appears still live.
         if (!isScreenSharingRef.current) {
           console.warn("🛡️ Ignoring onended because local screen-share flag is false");
           return;
@@ -148,18 +147,44 @@ const useScreenShare = (
           return;
         }
 
-        // Wait briefly to avoid immediate reversal from transient states
+        // Wait briefly (120ms) to reject transient/duplicate events
         await new Promise((resolve) => setTimeout(resolve, 120));
-
         if (!isScreenSharingRef.current) {
           console.warn("🛡️ Aborting onended flow after delay: screen share already stopped");
           return;
         }
 
+        console.warn("🛠️ onended handler will call stopScreenShare now");
         const stopFn = stopScreenShareRef.current;
         if (typeof stopFn === "function") {
           await stopFn();
         }
+      };
+
+      screenVideoTrack.oninactive = () => {
+        console.warn("🖥️ Screen share track inactive event", {
+          event: "oninactive",
+          readyState: screenVideoTrack.readyState,
+          label: screenVideoTrack.label,
+          muted: screenVideoTrack.muted,
+          enabled: screenVideoTrack.enabled,
+        });
+      };
+
+      screenVideoTrack.onmute = () => {
+        console.warn("🖥️ Screen share track muted", {
+          event: "onmute",
+          readyState: screenVideoTrack.readyState,
+          label: screenVideoTrack.label,
+        });
+      };
+
+      screenVideoTrack.onunmute = () => {
+        console.warn("🖥️ Screen share track unmuted", {
+          event: "onunmute",
+          readyState: screenVideoTrack.readyState,
+          label: screenVideoTrack.label,
+        });
       };
 
       setScreenShareError(null);
@@ -232,6 +257,15 @@ const useScreenShare = (
    * Toggle screen share on/off
    */
   const toggleScreenShare = useCallback(async () => {
+    console.log("🖱️ toggleScreenShare invoked", { isScreenSharing });
+    console.trace();
+
+    // Guard against accidental double toggles in quick succession
+    if (isScreenSharingRef.current && !isScreenSharing) {
+      console.warn("🛡️ toggleScreenShare called while isScreenSharingRef says true but state is false; ignoring until stable.");
+      return false;
+    }
+
     if (isScreenSharing) {
       return await stopScreenShare();
     } else {

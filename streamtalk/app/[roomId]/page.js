@@ -397,8 +397,8 @@ const Room = () => {
 
     const handleScreenShareStart = (userId) => {
       console.log(`🖥️ Screen share started by ${userId}`);
-      if (userId === myId && isScreenSharing) {
-        console.log("🛡️ Ignored duplicate self screen share start event");
+      if (userId === myId) {
+        console.log("🛡️ Ignored own screen share start event in page-level listener");
         return;
       }
       setScreenSharePeerId(userId);
@@ -406,8 +406,8 @@ const Room = () => {
 
     const handleScreenShareStop = (userId) => {
       console.log(`📷 Screen share stopped by ${userId}`);
-      if (userId === myId && isScreenSharing) {
-        console.log("🛡️ Ignored self stop event while local screen share is active");
+      if (userId === myId) {
+        console.log("🛡️ Ignored own screen share stop event in page-level listener");
         return;
       }
       setScreenSharePeerId((currentId) => (currentId === userId ? null : currentId));
