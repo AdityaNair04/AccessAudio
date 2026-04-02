@@ -9,6 +9,8 @@ const MediaStreamPlayer = ({
 }) => {
   const videoRef = useRef(null);
 
+  const playbackInProgressRef = useRef(false);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -17,13 +19,28 @@ const MediaStreamPlayer = ({
       video.srcObject = stream || null;
     }
 
-    if (stream && playing) {
-      const playPromise = video.play();
-      if (playPromise && typeof playPromise.catch === "function") {
-        playPromise.catch((err) => {
-          console.warn("MediaStreamPlayer playback error:", err);
+    if (!stream || !playing) {
+      return;
+    }
+
+    if (playbackInProgressRef.current) {
+      return;
+    }
+
+    const playPromise = video.play();
+    if (playPromise !== undefined && typeof playPromise.then === "function") {
+      playbackInProgressRef.current = true;
+      playPromise
+        .catch((err) => {
+          if (err.name === "AbortError") {
+            console.debug("MediaStreamPlayer play() aborted by new load request.");
+          } else {
+            console.warn("MediaStreamPlayer playback error:", err);
+          }
+        })
+        .finally(() => {
+          playbackInProgressRef.current = false;
         });
-      }
     }
 
     return () => {

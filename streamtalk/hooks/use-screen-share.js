@@ -117,6 +117,7 @@ const useScreenShare = (
         console.log(`📡 Emitted screen share start for ${myId} to room ${roomId}`);
       }
 
+      setIsScreenSharing(true);
       screenVideoTrack.onended = async () => {
         console.log("🖥️ Screen share track ended");
         const stopFn = stopScreenShareRef.current;
@@ -126,7 +127,6 @@ const useScreenShare = (
       };
 
       onLocalStreamUpdate(displayStream);
-      setIsScreenSharing(true);
       setScreenShareError(null);
       console.log("✅ Screen share started successfully");
       return true;
