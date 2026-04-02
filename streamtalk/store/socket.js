@@ -185,6 +185,7 @@ class APISocket {
 
         // Screen share broadcast changes
         const currentScreenSharer = data.screenSharePeerId || null;
+        console.debug("Polling screen share status:", { currentScreenSharer, lastKnown: this.lastKnownScreenSharer });
         if (currentScreenSharer !== this.lastKnownScreenSharer) {
           if (this.lastKnownScreenSharer && !currentScreenSharer) {
             this.trigger("user-screen-share-stop", this.lastKnownScreenSharer);

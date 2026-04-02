@@ -401,9 +401,7 @@ const Room = () => {
 
     const handleScreenShareStop = (userId) => {
       console.log(`📷 Screen share stopped by ${userId}`);
-      if (userId === screenSharePeerId) {
-        setScreenSharePeerId(null);
-      }
+      setScreenSharePeerId((currentId) => (currentId === userId ? null : currentId));
     };
 
     socket.on("user-screen-share-start", handleScreenShareStart);
