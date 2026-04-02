@@ -23,6 +23,7 @@ import FloatingControls from "@/components/ui/floating-controls";
 import SimpleVideoGrid from "@/components/ui/simple-video-grid";
 import SimpleChat from "@/components/ui/simple-chat";
 import PermissionRequest from "@/components/ui/permission-request";
+import ScreenShareLayout from "@/components/ui/screen-share-layout";
 
 const Room = () => {
   const socket = useSocket();
@@ -63,6 +64,7 @@ const Room = () => {
   const [showTroubleshooter, setShowTroubleshooter] = useState(false);
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
   const [isAvatarEnabled, setIsAvatarEnabled] = useState(false);
+  const [screenSharePeerId, setScreenSharePeerId] = useState(null);
   const avatarIframeRef = useRef(null);
 
   // Initialize screen sharing
@@ -71,7 +73,7 @@ const Room = () => {
     screenShareError,
     toggleScreenShare,
     cleanup: cleanupScreenShare,
-  } = useScreenShare(stream, users);
+  } = useScreenShare(stream, users, socket, myId, roomId);
 
   const callState = useRef({});
   const CALL_RETRY_MAX = 4;
@@ -363,12 +365,29 @@ const Room = () => {
     socket.on("user-toggle-video", handleToggleVideo);
     socket.on("user-leave", handleUserLeave);
 
+    const handleScreenShareStart = (userId) => {
+      console.log(`🖥️ Screen share started by ${userId}`);
+      setScreenSharePeerId(userId);
+    };
+
+    const handleScreenShareStop = (userId) => {
+      console.log(`📷 Screen share stopped by ${userId}`);
+      if (userId === screenSharePeerId) {
+        setScreenSharePeerId(null);
+      }
+    };
+
+    socket.on("user-screen-share-start", handleScreenShareStart);
+    socket.on("user-screen-share-stop", handleScreenShareStop);
+
     return () => {
       socket.off("user-toggle-audio", handleToggleAudio);
       socket.off("user-toggle-video", handleToggleVideo);
       socket.off("user-leave", handleUserLeave);
+      socket.off("user-screen-share-start", handleScreenShareStart);
+      socket.off("user-screen-share-stop", handleScreenShareStop);
     };
-  }, [players, setPlayers, socket, users, cleanupPeerDataChannel]);
+  }, [players, setPlayers, socket, users, cleanupPeerDataChannel, screenSharePeerId]);
 
   useEffect(() => {
     if (!peer || !stream) return;
@@ -544,25 +563,38 @@ const Room = () => {
             </div>
           )}
 
-          {/* Video Grid */}
+          {/* Video Grid / Screen Share Layout */}
           <div className="flex-1 w-full p-4 overflow-hidden relative">
-            <SimpleVideoGrid
-              players={players}
-              highlightedPlayerId={
-                playerHighlighted
-                  ? Object.keys(players).find(
-                      (id) => players[id] === playerHighlighted
-                    )
-                  : null
-              }
-              onPlayerClick={(playerId) => {
-                console.log(`Player ${playerId} clicked`);
-              }}
-              myId={myId}
-              isAudioEnabled={isAudioEnabled} 
-              selectedAudioOutput={selectedAudioOutput} 
-              className="h-full"
-            />
+            {screenSharePeerId && players[screenSharePeerId] ? (
+              // Screen Share Mode
+              <ScreenShareLayout
+                screenPlayer={players[screenSharePeerId]}
+                sharingPeerId={screenSharePeerId}
+                myId={myId}
+                players={players}
+                onStopScreenShare={toggleScreenShare}
+                selectedAudioOutput={selectedAudioOutput}
+              />
+            ) : (
+              // Normal Grid Mode
+              <SimpleVideoGrid
+                players={players}
+                highlightedPlayerId={
+                  playerHighlighted
+                    ? Object.keys(players).find(
+                        (id) => players[id] === playerHighlighted
+                      )
+                    : null
+                }
+                onPlayerClick={(playerId) => {
+                  console.log(`Player ${playerId} clicked`);
+                }}
+                myId={myId}
+                isAudioEnabled={isAudioEnabled} 
+                selectedAudioOutput={selectedAudioOutput} 
+                className="h-full"
+              />
+            )}
           </div>
 
           {/* Global Captions UI Overlay - Flex-stacked below the video grid */}

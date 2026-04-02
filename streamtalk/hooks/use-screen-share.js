@@ -4,12 +4,16 @@ import { useState, useCallback, useRef } from "react";
  * Custom hook for managing screen sharing in WebRTC peer connections
  * Handles graceful switching between camera and screen display
  * Maintains audio stream while sharing screen
+ * Broadcasts screen share state to other peers
  * 
  * @param {MediaStream} cameraStream - Original camera media stream
  * @param {Object} users - Active peer calls to update with screen stream
+ * @param {Object} socket - Socket.io connection for broadcasting
+ * @param {string} myId - Current user's peer ID
+ * @param {string} roomId - Current room ID
  * @returns {Object} Screen sharing state and controls
  */
-const useScreenShare = (cameraStream, users = {}) => {
+const useScreenShare = (cameraStream, users = {}, socket = null, myId = "", roomId = "") => {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [screenShareError, setScreenShareError] = useState(null);
   const screenStreamRef = useRef(null);
@@ -19,6 +23,7 @@ const useScreenShare = (cameraStream, users = {}) => {
    * Start screen sharing
    * Gets display media, replaces video track in all active calls
    * Keeps audio from camera mic
+   * Broadcasts screen share state to other peers
    */
   const startScreenShare = useCallback(async () => {
     if (!cameraStream) {
@@ -66,6 +71,12 @@ const useScreenShare = (cameraStream, users = {}) => {
         }
       });
 
+      // Broadcast screen share state to other peers
+      if (socket && myId && roomId) {
+        socket.emit("user-screen-share-start", myId, roomId);
+        console.log(`📡 Broadcasted screen share start to room ${roomId}`);
+      }
+
       // Handle screen share stop (user clicks stop in browser UI)
       screenVideoTrack.onended = () => {
         console.log("🖥️ Screen share stopped by user");
@@ -91,12 +102,13 @@ const useScreenShare = (cameraStream, users = {}) => {
       }
       return false;
     }
-  }, [cameraStream, users]);
+  }, [cameraStream, users, socket, myId, roomId]);
 
   /**
    * Stop screen sharing
    * Reverts to camera video track
    * Updates all active calls
+   * Broadcasts screen share stop to other peers
    */
   const stopScreenShare = useCallback(async () => {
     if (!isScreenSharing || !originalVideoTrackRef.current) {
@@ -130,6 +142,12 @@ const useScreenShare = (cameraStream, users = {}) => {
         }
       });
 
+      // Broadcast screen share stop to other peers
+      if (socket && myId && roomId) {
+        socket.emit("user-screen-share-stop", myId, roomId);
+        console.log(`📡 Broadcasted screen share stop to room ${roomId}`);
+      }
+
       // Clean up
       if (screenStreamRef.current) {
         screenStreamRef.current.getTracks().forEach(track => track.stop());
@@ -146,7 +164,7 @@ const useScreenShare = (cameraStream, users = {}) => {
       setScreenShareError(error.message);
       return false;
     }
-  }, [isScreenSharing, cameraStream, users]);
+  }, [isScreenSharing, cameraStream, users, socket, myId, roomId]);
 
   /**
    * Toggle screen share on/off
