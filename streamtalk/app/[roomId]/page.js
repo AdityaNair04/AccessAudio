@@ -516,7 +516,7 @@ const Room = () => {
   }, [peer, setPlayers, stream, socket]);
 
   useEffect(() => {
-    if (!stream || !myId) return;
+    if (!stream || !myId || isScreenSharing) return;
 
     console.log(`setting my stream ${myId}`);
     setPlayers((prev) => ({
@@ -527,7 +527,7 @@ const Room = () => {
         playing: isVideoEnabled, // Use actual video state
       },
     }));
-  }, [myId, setPlayers, stream, isVideoEnabled]); // Removed isAudioEnabled dependency
+  }, [myId, setPlayers, stream, isVideoEnabled, isScreenSharing]); // Prevent override during screen share
 
   // Apply audio output device to all players when it changes
   useEffect(() => {
