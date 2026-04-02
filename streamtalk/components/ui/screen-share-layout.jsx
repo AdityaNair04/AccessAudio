@@ -1,4 +1,4 @@
-import ReactPlayer from "react-player";
+import MediaStreamPlayer from "@/components/ui/media-stream-player";
 import { Mic, MicOff, UserSquare2, MonitorOff, X } from "lucide-react";
 import { memo } from "react";
 
@@ -39,14 +39,12 @@ const ScreenShareLayout = memo(({
       {/* Shared Screen - Full Screen */}
       <div className="absolute inset-0 flex items-center justify-center bg-black">
         {screenPlayer.playing ? (
-          <ReactPlayer
-            url={screenPlayer.url}
+          <MediaStreamPlayer
+            stream={screenPlayer.url}
             muted={true}
             playing={true}
-            width="100%"
-            height="100%"
+            selectedAudioOutput={selectedAudioOutput}
             className="object-contain"
-            progressInterval={1000}
           />
         ) : (
           <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-slate-800 to-purple-900">
@@ -81,14 +79,12 @@ const ScreenShareLayout = memo(({
               }}
             >
               {player.playing ? (
-                <ReactPlayer
-                  url={player.url}
+                <MediaStreamPlayer
+                  stream={player.url}
                   muted={player.muted}
                   playing={player.playing}
-                  width="100%"
-                  height="100%"
+                  selectedAudioOutput={selectedAudioOutput}
                   className="object-cover"
-                  progressInterval={1000}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-purple-800">

@@ -73,7 +73,30 @@ const Room = () => {
     screenShareError,
     toggleScreenShare,
     cleanup: cleanupScreenShare,
-  } = useScreenShare(stream, users, socket, myId, roomId);
+    activeStream,
+  } = useScreenShare(
+    stream,
+    users,
+    socket,
+    myId,
+    roomId,
+    (status, peerId) => {
+      if (status === "start") {
+        setScreenSharePeerId(peerId);
+      } else if (status === "stop") {
+        setScreenSharePeerId(null);
+      }
+    },
+    (updatedStream) => {
+      setPlayers((prev) => ({
+        ...prev,
+        [myId]: {
+          ...prev[myId],
+          url: updatedStream,
+        },
+      }));
+    }
+  );
 
   const callState = useRef({});
   const CALL_RETRY_MAX = 4;
@@ -284,14 +307,20 @@ const Room = () => {
     };
 
     const makeCall = (remoteId) => {
-      if (!peer || !stream || !remoteId || remoteId === myId) return;
+      if (!peer || !remoteId || remoteId === myId) return;
       if (users[remoteId] && users[remoteId].open) {
         console.log(`Already have an active call to ${remoteId}, skipping new call.`);
         return;
       }
 
+      const outgoingStream = activeStream || stream;
+      if (!outgoingStream) {
+        console.warn("No outgoing stream available for makeCall");
+        return;
+      }
+
       console.log(`user connected in room with userId ${remoteId}`);
-      const call = peer.call(remoteId, stream);
+      const call = peer.call(remoteId, outgoingStream);
       attachCallHandlers(remoteId, call);
       if (!callState.current[remoteId]) {
         callState.current[remoteId] = { retryCount: 0 };
@@ -307,7 +336,7 @@ const Room = () => {
     return () => {
       socket.off("user-connected", handleUserConnected);
     };
-  }, [peer, setPlayers, socket, stream, users, myId]);
+  }, [peer, setPlayers, socket, stream, users, myId, activeStream]);
 
   useEffect(() => {
     if (!socket) return;
@@ -395,10 +424,23 @@ const Room = () => {
     const handleIncomingCall = (call) => {
       const callerId = call.peer;
       console.log(`✔️ Incoming call from ${callerId}`);
-      call.answer(stream);
+      call.answer(activeStream || stream);
 
       call.on("stream", (incomingStream) => {
         console.log(`incoming stream from ${callerId}`);
+
+        // Detect screen share stream from remote user by track label inspection
+        const videoTrack = incomingStream.getVideoTracks()[0];
+        const isRemoteScreenShare =
+          videoTrack &&
+          videoTrack.label &&
+          /screen|display|window/i.test(videoTrack.label);
+
+        if (isRemoteScreenShare) {
+          console.log(`🖥️ Remote screen share detected for ${callerId}`);
+          setScreenSharePeerId(callerId);
+        }
+
         if (callState.current[callerId]) {
           callState.current[callerId].retryCount = 0;
         } else {

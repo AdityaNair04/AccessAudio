@@ -1,4 +1,4 @@
-import ReactPlayer from "react-player";
+import MediaStreamPlayer from "@/components/ui/media-stream-player";
 import { Mic, MicOff, UserSquare2, Loader2, WifiOff } from "lucide-react";
 import { memo } from "react";
 
@@ -98,24 +98,12 @@ const SimpleVideoGrid = ({
             }}
           >
             {player.playing ? (
-              <ReactPlayer
-                url={player.url}
+              <MediaStreamPlayer
+                stream={player.url}
                 muted={player.muted}
                 playing={player.playing}
-                width="100%"
-                height="100%"
+                selectedAudioOutput={selectedAudioOutput}
                 className="object-cover"
-                onReady={(player) => {
-                  // Set audio output device when player is ready
-                  if (selectedAudioOutput && selectedAudioOutput !== 'default') {
-                    const videoElement = player.getInternalPlayer();
-                    if (videoElement && videoElement.setSinkId) {
-                      videoElement.setSinkId(selectedAudioOutput).catch(err => {
-                        console.warn('Failed to set audio output device:', err);
-                      });
-                    }
-                  }
-                }}
               />
             ) : (
               <div

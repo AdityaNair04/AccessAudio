@@ -81,7 +81,7 @@ async function handleRequest(action, roomId, userId, sessionId) {
 
         // Add user to room
         if (!rooms.has(roomId)) {
-          rooms.set(roomId, { users: [] });
+          rooms.set(roomId, { users: [], screenSharePeerId: null });
         }
 
         const room = rooms.get(roomId);
@@ -118,7 +118,10 @@ async function handleRequest(action, roomId, userId, sessionId) {
         if (!roomData) {
           return Response.json({ users: [] });
         }
-        return Response.json({ users: roomData.users.map((u) => u.id) });
+        return Response.json({
+          users: roomData.users.map((u) => u.id),
+          screenSharePeerId: roomData.screenSharePeerId || null,
+        });
 
       case "leave-room":
         if (!roomId || !userId) {
@@ -131,6 +134,9 @@ async function handleRequest(action, roomId, userId, sessionId) {
         if (rooms.has(roomId)) {
           const room = rooms.get(roomId);
           room.users = room.users.filter((user) => user.id !== userId);
+          if (room.screenSharePeerId === userId) {
+            room.screenSharePeerId = null;
+          }
           if (room.users.length === 0) {
             rooms.delete(roomId);
           }
@@ -145,6 +151,28 @@ async function handleRequest(action, roomId, userId, sessionId) {
         }
 
         return Response.json({ success: true });
+
+      case "user-screen-share-start":
+        if (!roomId || !userId) {
+          return Response.json({ error: "Missing roomId or userId" }, { status: 400 });
+        }
+        if (rooms.has(roomId)) {
+          const room = rooms.get(roomId);
+          room.screenSharePeerId = userId;
+        }
+        return Response.json({ success: true, screenSharePeerId: userId });
+
+      case "user-screen-share-stop":
+        if (!roomId || !userId) {
+          return Response.json({ error: "Missing roomId or userId" }, { status: 400 });
+        }
+        if (rooms.has(roomId)) {
+          const room = rooms.get(roomId);
+          if (room.screenSharePeerId === userId) {
+            room.screenSharePeerId = null;
+          }
+        }
+        return Response.json({ success: true, screenSharePeerId: null });
 
       case "ping":
       case "toggle-audio":

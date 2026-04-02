@@ -21,6 +21,7 @@ class APISocket {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000;
+    this.lastKnownScreenSharer = null;
   }
 
   // Emit events by making API calls
@@ -87,6 +88,24 @@ class APISocket {
             roomId: videoRoomId,
             userId: videoUserId,
           });
+          break;
+
+        case "user-screen-share-start":
+          const [shareStartUserId, shareStartRoomId] = args;
+          await this.makeAPICall("user-screen-share-start", {
+            roomId: shareStartRoomId,
+            userId: shareStartUserId,
+          });
+          this.trigger("user-screen-share-start", shareStartUserId);
+          break;
+
+        case "user-screen-share-stop":
+          const [shareStopUserId, shareStopRoomId] = args;
+          await this.makeAPICall("user-screen-share-stop", {
+            roomId: shareStopRoomId,
+            userId: shareStopUserId,
+          });
+          this.trigger("user-screen-share-stop", shareStopUserId);
           break;
 
         case "user-leave":
@@ -162,6 +181,18 @@ class APISocket {
           });
 
           this.lastKnownUsers = data.users;
+        }
+
+        // Screen share broadcast changes
+        const currentScreenSharer = data.screenSharePeerId || null;
+        if (currentScreenSharer !== this.lastKnownScreenSharer) {
+          if (this.lastKnownScreenSharer && !currentScreenSharer) {
+            this.trigger("user-screen-share-stop", this.lastKnownScreenSharer);
+          }
+          if (currentScreenSharer) {
+            this.trigger("user-screen-share-start", currentScreenSharer);
+          }
+          this.lastKnownScreenSharer = currentScreenSharer;
         }
       } catch (error) {
         console.error("❌ Polling error:", error);
