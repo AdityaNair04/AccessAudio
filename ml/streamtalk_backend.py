@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai.errors import APIError
 from dotenv import load_dotenv
+import requests
 
 # Load environment variables from .env file for local development
 load_dotenv()
@@ -40,20 +41,55 @@ def load_v3_label_map():
 
 def get_emotion_model():
     sys.path.insert(0, EMOTION_DIR)
-    from models.mobilenet_emotion import create_mobilenet_model
     from configs.config import config as em_config
-    
+
     emotions = em_config.CLASS_NAMES
-    model = create_mobilenet_model(num_classes=em_config.NUM_CLASSES, pretrained=False, version='v1')
-    weights = torch.load(os.path.join(EMOTION_DIR, "mobilenetv2.pth.zip"), map_location='cpu', weights_only=False)
-    if 'model_state_dict' in weights: weights = weights['model_state_dict']
-    model.load_state_dict(weights)
-    model.eval()
-    
-    sys.path.pop(0)
-    for mod in list(sys.modules.keys()):
-        if mod.startswith('models') or mod.startswith('configs'):
-            del sys.modules[mod]
+    arch = getattr(em_config, 'MODEL_ARCH', 'mobilenetv2').lower()
+
+    def load_model_from_path(model, weight_path):
+        if not os.path.exists(weight_path):
+            raise FileNotFoundError(f"Emotion weight not found: {weight_path}")
+
+        weights = torch.load(weight_path, map_location='cpu', weights_only=False)
+        if 'model_state_dict' in weights:
+            weights = weights['model_state_dict']
+        model.load_state_dict(weights)
+        model.eval()
+        return model
+
+    if 'resnet' in arch:
+        from models.resnet_emotion import create_model as create_emotion_model
+        model = create_emotion_model(num_classes=em_config.NUM_CLASSES, pretrained=False, version='v1')
+        weight_path = os.path.join(EMOTION_DIR, 'resnet50.pth.zip')
+    else:
+        from models.mobilenet_emotion import create_mobilenet_model as create_emotion_model
+        model = create_emotion_model(num_classes=em_config.NUM_CLASSES, pretrained=False, version='v1')
+        weight_path = os.path.join(EMOTION_DIR, 'mobilenetv2.pth.zip')
+
+    try:
+        model = load_model_from_path(model, weight_path)
+        print(f"✅ Emotion model loaded: {arch} at {weight_path}")
+    except Exception as e:
+        print(f"⚠️ Emotion model load failed ({arch}): {e}")
+        fallback_arch = 'mobilenetv2' if 'resnet' in arch else 'resnet50'
+        print(f"🔁 Falling back to {fallback_arch}")
+        if fallback_arch == 'resnet50':
+            from models.resnet_emotion import create_model as create_emotion_model
+            model = create_emotion_model(num_classes=em_config.NUM_CLASSES, pretrained=False, version='v1')
+            weight_path = os.path.join(EMOTION_DIR, 'resnet50.pth.zip')
+        else:
+            from models.mobilenet_emotion import create_mobilenet_model as create_emotion_model
+            model = create_emotion_model(num_classes=em_config.NUM_CLASSES, pretrained=False, version='v1')
+            weight_path = os.path.join(EMOTION_DIR, 'mobilenetv2.pth.zip')
+        model = load_model_from_path(model, weight_path)
+        print(f"✅ Emotion model loaded: {fallback_arch} at {weight_path}")
+
+    finally:
+        sys.path.pop(0)
+        for mod in list(sys.modules.keys()):
+            if mod.startswith('models') or mod.startswith('configs'):
+                del sys.modules[mod]
+
     return model, emotions
 
 def get_sign_model_tflite():
@@ -137,9 +173,57 @@ async def fetch_gemini_translation(words, emotion):
     except APIError as e:
         error_msg = f"[GEMINI API ERROR] {type(e).__name__}: {e}. Check your API key, billing, and permissions."
         print(f"❌ {error_msg}")
-        return error_msg
+        print("🔄 Falling back to OpenRouter Qwen model...")
+        return await fetch_openrouter_translation(words, emotion)
     except Exception as e:
         error_msg = f"[GEMINI HANDLER ERROR] {type(e).__name__}: {e}"
+        print(f"❌ {error_msg}")
+        print("🔄 Falling back to OpenRouter Qwen model...")
+        return await fetch_openrouter_translation(words, emotion)
+
+async def fetch_openrouter_translation(words, emotion):
+    api_key = os.environ.get("OPENROUTER_API_KEY")
+    if not api_key:
+        error_msg = "[OPENROUTER ERROR] API key not configured on the server."
+        print(error_msg)
+        return error_msg
+
+    prompt = (
+        f"Translate the following sequence of sign language words into a single, grammatically correct, natural-flowing sentence: '{' '.join(words)}'. "
+        f"The user's detected emotion is '{emotion}'. "
+        f"The final output MUST be only the translated sentence, followed by the emotion in parentheses. "
+        f"For example: 'This is a translated sentence. (Happy)'. "
+        f"DO NOT include any other explanatory text, quotes, or markdown."
+    )
+
+    print(f"📝 PROMPT FOR OPENROUTER:\n---\n{prompt}\n---")
+
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "qwen/qwen3.6-plus-preview:free",
+        "messages": [
+            {"role": "user", "content": prompt}
+        ]
+    }
+
+    try:
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, lambda: requests.post(url, headers=headers, json=data, timeout=30))
+        response.raise_for_status()
+        result = response.json()
+        translated_text = result['choices'][0]['message']['content'].strip()
+        print(f"✅ OpenRouter Translated: {translated_text}")
+        
+        if f"({emotion})" not in translated_text:
+            translated_text = f"{translated_text} ({emotion})"
+            
+        return translated_text
+    except Exception as e:
+        error_msg = f"[OPENROUTER ERROR] {type(e).__name__}: {e}"
         print(f"❌ {error_msg}")
         return error_msg
 
@@ -169,13 +253,13 @@ class ConnectionState:
         self.current_emotion = "Neutral"
         self.last_word_time = time.time()
         self.last_predicted_word = None
-        
-        self.prediction_history = deque(maxlen=3) # Reduced from 5 for faster detection
+
+        self.prediction_history = deque(maxlen=2)  # faster confirmation with short reliable burst
         self.in_cooldown = False
-        self.cooldown_duration = 1.5 # Adjusted to perfectly balance natural sequence delays
+        self.cooldown_duration = 0.8  # quicker word cadence in active conversation
         self.cooldown_start_time = 0
         self.epoch = 0
-        
+
         self.frame_count = 0
         self.is_translating = False
 
@@ -281,8 +365,8 @@ async def websocket_endpoint(websocket: WebSocket):
                                     })
                                     print(f"Buffer: {state.sign_buffer}")
 
-                # --- 2. Emotion Extraction (Every 10 frames) ---
-                if state.frame_count % 10 == 0:
+                # --- 2. Emotion Extraction (Every 5 frames) ---
+                if state.frame_count % 5 == 0:
                     face_results = await asyncio.to_thread(face_detection.process, image)
                     if face_results.detections:
                         det = face_results.detections[0]
@@ -293,19 +377,22 @@ async def websocket_endpoint(websocket: WebSocket):
                         pad_x, pad_y = int(width * 0.2), int(height * 0.2)
                         x1, y1 = max(0, xmin - pad_x), max(0, ymin - pad_y)
                         x2, y2 = min(w, xmin + width + pad_x), min(h, ymin + height + pad_y)
-                        
+
                         if (x2 - x1) > 10 and (y2 - y1) > 10:
                             face_crop = frame[y1:y2, x1:x2]
                             try:
                                 em_idx, em_conf = process_face(emotion_model, face_crop)
-                                if em_conf > 0.4:
-                                    if state.current_emotion != emotion_labels[em_idx]:
-                                        state.current_emotion = emotion_labels[em_idx]
+                                if em_conf > 0.3:  # less strict for low-light/face angles
+                                    new_emotion = emotion_labels[em_idx]
+                                    if new_emotion != state.current_emotion:
+                                        state.current_emotion = new_emotion
                                         await websocket.send_json({
                                             "type": "emotion_update",
                                             "emotion": state.current_emotion
                                         })
-                            except: pass
+                            except Exception as e:
+                                print(f"Emotion processing error: {e}")
+                                pass
 
                 # Tell React client we are ready for the NEXT frame (Backpressure enforcement)
                 # Removed explicit 'ack' to save massive downstream bandwidth; frontend now uses native TCP bufferedAmount

@@ -77,7 +77,7 @@ export default function CaptionsOverlay({ captions, aiStatus, aiBuffer, aiEmotio
       {/* AI Status Indicators */}
       {aiStatus === 'translating' && (
         <div className="mb-2 bg-blue-600/90 text-white text-xs px-4 py-1.5 flex items-center gap-2 rounded-full shadow-lg">
-           <Loader2 className="w-3.5 h-3.5 animate-spin"/> Gemini is Translating Context...
+           <Loader2 className="w-3.5 h-3.5 animate-spin"/> LLM is Translating Context...
         </div>
       )}
       
