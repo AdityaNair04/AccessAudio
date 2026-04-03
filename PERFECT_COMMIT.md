@@ -1,42 +1,49 @@
 # Perfect State Commit
 
-## Last Stable Commit: 092d24766
+## Last Stable Commit: d0c08ebcd
 
-**Commit Message**: feat: add OpenRouter Qwen fallback for LLM translation when Gemini rate limits, update UI text to 'LLM Translating Context', add requests dependency
+**Commit Message**: feat: add Morse code input feature for complete inclusivity
+
+- Add MorseCode component with space bar input (short=dot, long=dash)
+- Backend decoding and LLM translation for Morse sequences
+- Toggle button in floating controls with Keyboard icon
+- Real-time text preview and letter-by-letter decoding
+- Integrates seamlessly with existing translation flow
 
 **Date**: April 3, 2026
 
 **Changes**:
-- Added OpenRouter API integration as fallback for Gemini rate limits.
-- Modified `ml/streamtalk_backend.py` to include `fetch_openrouter_translation` function.
-- Updated UI in `streamtalk/components/ui/captions-overlay.js` to show "LLM Translating Context" instead of "Gemini Translating Context".
-- Added `requests==2.31.0` to `ml/requirements.txt`.
-- Ensured seamless fallback without breaking existing features.
+- Added MorseCode component (`streamtalk/components/ui/morse-code.jsx`) for space bar input.
+- Modified `ml/streamtalk_backend.py` to include Morse code decoding, buffer management, and integration with LLM translation.
+- Updated `streamtalk/app/[roomId]/page.js` to handle Morse signals, WebSocket events, and UI state.
+- Added Morse toggle button in `streamtalk/components/ui/floating-controls.jsx` with Keyboard icon.
+- Ensured Morse input works alongside existing sign language and speech features.
 
 **Why Perfect**:
-- All features working: video, audio, sign recognition, emotion, LLM translation with fallback.
-- No runtime errors (e.g., activeStream fixed).
+- Complete inclusivity: supports sign language, speech, Morse code, and emotion-aware LLM translation.
+- All features working harmoniously without conflicts.
+- No runtime errors; builds successfully.
 - Auto-deploy ready on Vercel and Hugging Face Spaces.
-- Comprehensive testing possible.
+- Comprehensive multimodal communication platform.
 
 **Rollback Command** (if needed):
 ```
-git reset --hard 092d24766
+git reset --hard d0c08ebcd
 ```
 
-This commit represents the fully functional, stable state before adding new features.
+This commit represents the fully functional, stable state with Morse code feature added.
 - **Emotion Detection**: Facial emotion recognition using PyTorch model, detecting emotions like Happy, Sad, Angry, etc.
-- **LLM Translation**: Context-aware sentence generation from sign words and emotions using Gemini API with OpenRouter Qwen fallback for rate limit handling.
+- **LLM Translation**: Context-aware sentence generation from sign words, speech, Morse code, and emotions using Gemini API with OpenRouter Qwen fallback for rate limit handling.
+- **Morse Code Input**: Space bar-based Morse code input with real-time decoding and LLM translation.
 - **Captions and Chat**: Real-time captions broadcasted to all peers, with chat functionality.
 - **Avatar Integration**: 3D avatar that displays translated text for visual communication.
-- **Screen Share**: (Removed in recent updates to stabilize platform; can be re-added if needed).
 - **Permission Management**: Camera/microphone permissions with diagnostics and retry.
 - **Cross-Platform**: Works on web browsers with WebRTC support.
 
 ### Architecture
 - **Frontend**: Next.js (React) app deployed on Vercel.
 - **Backend**: FastAPI WebSocket server for AI processing, deployed on Hugging Face Spaces.
-- **AI Models**: Sign language (TFLite), Emotion (PyTorch), LLM (Gemini/OpenRouter).
+- **AI Models**: Sign language (TFLite), Emotion (PyTorch), LLM (Gemini/OpenRouter), Morse decoding.
 - **Communication**: PeerJS for P2P, Socket.IO for signaling.
 - **Deployment**: Auto-deploy on push to GitHub.
 
