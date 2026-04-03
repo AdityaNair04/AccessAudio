@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 
 const MORSE_CODE = {
   '.-': 'A', '-...': 'B', '-.-.': 'C', '-..': 'D', '.': 'E',
@@ -38,12 +38,12 @@ const MorseCode = ({
 
   const addWordSpace = () => {
     finalizeLetter();
-    if (bufferText.trim().length > 0) {
-      const updatedBuffer = bufferText + ' ';
+    if (bufferText.trim().length > 0 && !bufferText.endsWith(' ')) {
+      const updatedBuffer = bufferText.trimEnd() + ' ';
       setBufferText(updatedBuffer);
       onBufferChange?.(updatedBuffer);
+      setReadyToSend(false);
     }
-    setReadyToSend(false);
   };
 
   const finalizeSentence = () => {
@@ -85,6 +85,11 @@ const MorseCode = ({
         }
       }
 
+      if (e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        finalizeLetter();
+      }
+
       if (e.key.toLowerCase() === 's') {
         e.preventDefault();
         addWordSpace();
@@ -97,7 +102,7 @@ const MorseCode = ({
 
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (readyToSend) {
+        if (readyToSend && bufferText.trim().length > 0) {
           submitMessage();
         }
       }
@@ -118,8 +123,8 @@ const MorseCode = ({
         if (letterTimeoutRef.current) clearTimeout(letterTimeoutRef.current);
 
         letterTimeoutRef.current = setTimeout(() => {
-          finalizeLetter();
-        }, 1800); // 1.8 sec gap indicates end of letter
+          // No auto finalize; user uses 'c' to commit.
+        }, 1800);
       }
     };
 
@@ -132,6 +137,12 @@ const MorseCode = ({
       if (letterTimeoutRef.current) clearTimeout(letterTimeoutRef.current);
     };
   }, [isEnabled, isPressed, currentSymbol, bufferText, readyToSend, onSubmit, onSpeak, onClear, onBufferChange]);
+
+  useEffect(() => {
+    if (morseText !== undefined && morseText !== bufferText) {
+      setBufferText(morseText);
+    }
+  }, [morseText]);
 
   if (!isEnabled) return null;
 
@@ -149,7 +160,7 @@ const MorseCode = ({
         </div>
 
         <div className="text-xs text-slate-300 mb-2">
-          SPACE: Dot(.)/Dash(-) | s:    Word Space | e: Finalize+Speak | Enter: Send | Backspace: Clear
+          SPACE: Dot(.)/Dash(-) | c: Commit letter | s: Word space | e: Finalize+Speak | Enter: Send | Backspace: Clear
         </div>
 
         <div className="font-mono text-sm bg-slate-700 p-2 rounded min-h-[2rem] mb-2">
@@ -161,7 +172,7 @@ const MorseCode = ({
         </div>
 
         <div className="text-xs text-slate-400">
-          {readyToSend ? 'Ready to send (press Enter)' : 'Compose letters and finalize with e.'}
+          {readyToSend ? 'Ready to send (press Enter)' : 'Type letters & hit c when complete.'}
         </div>
       </div>
     </div>

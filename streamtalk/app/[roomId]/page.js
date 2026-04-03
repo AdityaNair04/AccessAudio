@@ -307,10 +307,10 @@ const Room = () => {
   // Morse Code handlers (user-driven explicit workflow)
   const handleMorseSubmit = (text) => {
     if (!text || !socket) return;
-    setMorseText(text);
-    sendMessage(`[Morse] ${text}`);
-    // Also send caption stream to AI/room as standard caption
-    sendCaption({ text: `[Morse] ${text}`, emotion: 'Neutral' });
+    // Send as normal chat message with user identity (You / peer)
+    sendMessage(text);
+    sendCaption({ text, emotion: 'Speaking' });
+    setMorseText('');
     setShowMorseReady(false);
   };
 
