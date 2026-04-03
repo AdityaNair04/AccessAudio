@@ -22,6 +22,46 @@ import FloatingControls from "@/components/ui/floating-controls";
 import SimpleVideoGrid from "@/components/ui/simple-video-grid";
 import SimpleChat from "@/components/ui/simple-chat";
 import PermissionRequest from "@/components/ui/permission-request";
+import MorseCode from "@/components/ui/morse-code";
+
+const MORSE_CODE = {
+  '.-': 'A',
+  '-...': 'B',
+  '-.-.': 'C',
+  '-..': 'D',
+  '.': 'E',
+  '..-.': 'F',
+  '--.': 'G',
+  '....': 'H',
+  '..': 'I',
+  '.---': 'J',
+  '-.-': 'K',
+  '.-..': 'L',
+  '--': 'M',
+  '-.': 'N',
+  '---': 'O',
+  '.--.': 'P',
+  '--.-': 'Q',
+  '.-.': 'R',
+  '...': 'S',
+  '-': 'T',
+  '..-': 'U',
+  '...-': 'V',
+  '.--': 'W',
+  '-..-': 'X',
+  '-.--': 'Y',
+  '--..': 'Z',
+  '.----': '1',
+  '..---': '2',
+  '...--': '3',
+  '....-': '4',
+  '.....': '5',
+  '-....': '6',
+  '--...': '7',
+  '---..': '8',
+  '----.': '9',
+  '-----': '0'
+};
 
 const Room = () => {
   const socket = useSocket();
@@ -62,7 +102,14 @@ const Room = () => {
   const [showTroubleshooter, setShowTroubleshooter] = useState(false);
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
   const [isAvatarEnabled, setIsAvatarEnabled] = useState(false);
+  const [isMorseEnabled, setIsMorseEnabled] = useState(false);
+  const [morseText, setMorseText] = useState('');
   const avatarIframeRef = useRef(null);
+  const morseSequenceRef = useRef('');
+  const morseTextRef = useRef('');
+  const lastKeyUpTimeRef = useRef(0);
+  const isSpacePressedRef = useRef(false);
+  const spaceDownTimeRef = useRef(0);
 
   const callState = useRef({});
   const CALL_RETRY_MAX = 4;
@@ -177,6 +224,61 @@ const Room = () => {
     }
   }, [captions, isAvatarEnabled]);
 
+  // Morse Code Input Handling
+  useEffect(() => {
+    if (!isMorseEnabled) return;
+
+    const handleKeyDown = (e) => {
+      if (e.code === 'Space' && !isSpacePressedRef.current) {
+        e.preventDefault();
+        isSpacePressedRef.current = true;
+        spaceDownTimeRef.current = Date.now();
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (e.code === 'Space' && isSpacePressedRef.current) {
+        e.preventDefault();
+        isSpacePressedRef.current = false;
+        const duration = Date.now() - spaceDownTimeRef.current;
+        const signal = duration > 200 ? '-' : '.';
+        morseSequenceRef.current += signal;
+        lastKeyUpTimeRef.current = Date.now();
+      }
+    };
+
+    const checkForLetter = () => {
+      const now = Date.now();
+      if (morseSequenceRef.current && (now - lastKeyUpTimeRef.current) > 500) {
+        const letter = MORSE_CODE[morseSequenceRef.current];
+        if (letter) {
+          morseTextRef.current += letter;
+          console.log(`Morse Letter: ${letter}, Text: ${morseTextRef.current}`);
+        }
+        morseSequenceRef.current = '';
+      }
+      if (morseTextRef.current && (now - lastKeyUpTimeRef.current) > 1000) {
+        // Send the word as a chat message
+        if (sendMessage && morseTextRef.current.trim()) {
+          sendMessage(`[Morse] ${morseTextRef.current}`);
+          console.log(`Sent Morse message: ${morseTextRef.current}`);
+        }
+        morseTextRef.current = '';
+      }
+    };
+
+    const interval = setInterval(checkForLetter, 100);
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isMorseEnabled, sendMessage]);
+
   // Call duration timer
   useEffect(() => {
     const timer = setInterval(() => {
@@ -186,14 +288,30 @@ const Room = () => {
     return () => clearInterval(timer);
   }, [callStartTime]);
 
-  // Enhanced retry media stream with audio diagnostics
-  const retryMediaStream = async () => {
-    if (process.env.NODE_ENV === "development") {
-      const { quickAudioCheck } = await import("@/utils/audio-diagnostics");
-      console.log("🔍 Running audio diagnostics before retry...");
-      await quickAudioCheck();
+  // Morse Code handlers
+  const handleMorseSignal = (signal) => {
+    if (socket) {
+      socket.emit("morse_signal", { signal });
     }
-    window.location.reload();
+  };
+
+  const handleMorseEndLetter = () => {
+    if (socket) {
+      socket.emit("morse_end_letter");
+    }
+  };
+
+  const handleMorseTranslate = () => {
+    if (socket) {
+      socket.emit("approve", { epoch: Date.now() });
+    }
+  };
+
+  const handleMorseClear = () => {
+    setMorseText('');
+    if (socket) {
+      socket.emit("clear", { epoch: Date.now() });
+    }
   };
 
   useEffect(() => {
@@ -341,15 +459,21 @@ const Room = () => {
       });
     };
 
+    const handleMorseUpdate = (data) => {
+      setMorseText(data.text);
+    };
+
     socket.on("user-toggle-audio", handleToggleAudio);
     socket.on("user-toggle-video", handleToggleVideo);
     socket.on("user-leave", handleUserLeave);
+    socket.on("morse_update", handleMorseUpdate);
 
 
     return () => {
       socket.off("user-toggle-audio", handleToggleAudio);
       socket.off("user-toggle-video", handleToggleVideo);
       socket.off("user-leave", handleUserLeave);
+      socket.off("morse_update", handleMorseUpdate);
     };
   }, [players, setPlayers, socket, users, cleanupPeerDataChannel]);
 
@@ -553,6 +677,16 @@ const Room = () => {
             />
           </div>
 
+          {/* Morse Code Input */}
+          <MorseCode
+            isEnabled={isMorseEnabled}
+            onSignal={handleMorseSignal}
+            onEndLetter={handleMorseEndLetter}
+            onTranslate={handleMorseTranslate}
+            onClear={handleMorseClear}
+            morseText={morseText}
+          />
+
           {/* Room ID Copy Section - Hidden */}
           <div className="hidden">
             <CopySection roomId={roomId} />
@@ -572,6 +706,8 @@ const Room = () => {
             toggleSpeechToText={() => setIsSpeechEnabled(!isSpeechEnabled)}
             isAvatarEnabled={isAvatarEnabled}
             toggleAvatar={() => setIsAvatarEnabled(!isAvatarEnabled)}
+            isMorseEnabled={isMorseEnabled}
+            toggleMorse={() => setIsMorseEnabled(!isMorseEnabled)}
           />
         )}
 

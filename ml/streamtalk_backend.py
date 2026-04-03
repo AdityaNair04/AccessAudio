@@ -23,6 +23,30 @@ load_dotenv()
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 
+# Morse Code Dictionary
+MORSE_CODE_DICT = {
+    '.-': 'A', '-...': 'B', '-.-.': 'C', '-..': 'D', '.': 'E',
+    '..-.': 'F', '--.': 'G', '....': 'H', '..': 'I', '.---': 'J',
+    '-.-': 'K', '.-..': 'L', '--': 'M', '-.': 'N', '---': 'O',
+    '.--.': 'P', '--.-': 'Q', '.-.': 'R', '...': 'S', '-': 'T',
+    '..-': 'U', '...-': 'V', '.--': 'W', '-..-': 'X', '-.--': 'Y',
+    '--..': 'Z', '.----': '1', '..---': '2', '...--': '3', '....-': '4',
+    '.....': '5', '-....': '6', '--...': '7', '---..': '8', '----.': '9',
+    '-----': '0', '/': ' '  # / for word separation
+}
+
+def decode_morse(morse_sequence):
+    """Decode a sequence of Morse code letters into text."""
+    words = morse_sequence.split(' / ')
+    decoded_words = []
+    for word in words:
+        letters = word.split(' ')
+        decoded_word = ''.join([MORSE_CODE_DICT.get(letter, '?') for letter in letters if letter])
+        decoded_words.append(decoded_word)
+    return ' '.join(decoded_words).strip()
+
+ML_DIR = os.path.dirname(os.path.abspath(__file__))
+
 ML_DIR = os.path.dirname(os.path.abspath(__file__))
 EMOTION_DIR = os.path.join(ML_DIR, "model_config_emotion", "emotion")
 TFLITE_MODEL_PATH = os.path.join(ML_DIR, "models", "model.tflite")
@@ -263,6 +287,14 @@ class ConnectionState:
         self.frame_count = 0
         self.is_translating = False
 
+        # Morse Code fields
+        self.morse_buffer = []  # List of decoded letters/words
+        self.current_morse_letter = ""  # Current letter being built
+        self.last_press_time = 0
+        self.dot_dash_threshold = 0.3  # Time to distinguish dot from dash
+        self.letter_pause_threshold = 1.0  # Pause to end letter
+        self.word_pause_threshold = 2.0  # Pause to end word
+
 # Active WebSocket connections
 active_connections = {}
 
@@ -282,15 +314,26 @@ async def websocket_endpoint(websocket: WebSocket):
             if message.get("type") == "approve":
                 print("\n[UI COMMAND] Received APPROVE -> Translating to Gemini...")
                 state.epoch = message.get("epoch", state.epoch)
-                if len(state.sign_buffer) > 0 and not state.is_translating:
+                if len(state.sign_buffer) > 0 or len(state.morse_buffer) > 0:
                     state.is_translating = True
                     await websocket.send_json({"type": "translating"})
-                    asyncio.create_task(run_translation(websocket, state, list(state.sign_buffer), state.current_emotion, state.epoch))
-                    state.sign_buffer.clear()
-                    state.last_predicted_word = None
-                    state.prediction_history.clear()
-                    state.sequence.clear()
-                    state.in_cooldown = False
+                    
+                    # Determine input type
+                    if len(state.morse_buffer) > 0:
+                        # Use Morse code
+                        morse_text = decode_morse(" ".join(state.morse_buffer))
+                        words = morse_text.split()  # Split into words
+                        asyncio.create_task(run_translation(websocket, state, words, state.current_emotion, state.epoch))
+                        state.morse_buffer.clear()
+                        state.current_morse_letter = ""
+                    else:
+                        # Use Sign language
+                        asyncio.create_task(run_translation(websocket, state, list(state.sign_buffer), state.current_emotion, state.epoch))
+                        state.sign_buffer.clear()
+                        state.last_predicted_word = None
+                        state.prediction_history.clear()
+                        state.sequence.clear()
+                        state.in_cooldown = False
                     
             elif message.get("type") == "clear":
                 print("\n[UI COMMAND] Received CLEAR -> Purging Buffer")
@@ -300,7 +343,28 @@ async def websocket_endpoint(websocket: WebSocket):
                 state.prediction_history.clear()
                 state.sequence.clear()
                 state.in_cooldown = False
+                state.morse_buffer.clear()
+                state.current_morse_letter = ""
                 await websocket.send_json({"type": "buffer_update", "words": [], "status": "cleared", "epoch": state.epoch})
+            
+            elif message.get("type") == "morse_signal":
+                signal = message.get("signal")  # "dot" or "dash"
+                if signal in ["dot", "dash"]:
+                    state.current_morse_letter += "." if signal == "dot" else "-"
+                    print(f"Morse signal: {signal}, current letter: {state.current_morse_letter}")
+            
+            elif message.get("type") == "morse_end_letter":
+                if state.current_morse_letter:
+                    letter = MORSE_CODE_DICT.get(state.current_morse_letter, "?")
+                    if letter == " ":
+                        # End word
+                        if state.morse_buffer:
+                            state.morse_buffer.append(" / ")  # Separator for decoding
+                    else:
+                        state.morse_buffer.append(state.current_morse_letter)
+                    state.current_morse_letter = ""
+                    decoded_text = decode_morse(" ".join(state.morse_buffer))
+                    await websocket.send_json({"type": "morse_update", "text": decoded_text, "epoch": state.epoch})
             
             elif message.get("type") == "frame":
                 b64_data = message.get("image", "")
