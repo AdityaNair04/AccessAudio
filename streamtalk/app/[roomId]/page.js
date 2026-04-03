@@ -63,6 +63,54 @@ const MORSE_CODE = {
   '-----': '0'
 };
 
+const textToMorse = (text) => {
+  return text.toUpperCase().split('').map(char => MORSE_CODE[char] || '').join(' ');
+};
+
+const playMorseAudio = (morseCode) => {
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+
+  oscillator.frequency.setValueAtTime(100, audioContext.currentTime); // Bass frequency
+  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+
+  let time = audioContext.currentTime;
+  const dotDuration = 0.1;
+  const dashDuration = 0.3;
+  const pauseDuration = 0.1;
+  const letterPause = 0.3;
+  const wordPause = 0.7;
+
+  morseCode.split(' ').forEach((symbol) => {
+    if (symbol === '/') {
+      time += wordPause;
+    } else {
+      symbol.split('').forEach(char => {
+        oscillator.frequency.setValueAtTime(100, time);
+        gainNode.gain.setValueAtTime(0.3, time);
+        const duration = char === '.' ? dotDuration : dashDuration;
+        gainNode.gain.setValueAtTime(0, time + duration);
+        time += duration + pauseDuration;
+      });
+      time += letterPause - pauseDuration;
+    }
+  });
+
+  oscillator.start(audioContext.currentTime);
+  oscillator.stop(time);
+};
+
+const speakText = (text) => {
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(utterance);
+  }
+};
+
 const Room = () => {
   const socket = useSocket();
   const { roomId } = useParams(); 
@@ -103,6 +151,7 @@ const Room = () => {
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
   const [isAvatarEnabled, setIsAvatarEnabled] = useState(false);
   const [isMorseEnabled, setIsMorseEnabled] = useState(false);
+  const [isMorseOutputEnabled, setIsMorseOutputEnabled] = useState(false);
   const [morseText, setMorseText] = useState('');
   const avatarIframeRef = useRef(null);
   const morseSequenceRef = useRef('');
@@ -208,21 +257,32 @@ const Room = () => {
 
   // Automatically pipe finished transcriptions to the 3D Avatar Angular Application 
   useEffect(() => {
-    if (isAvatarEnabled && avatarIframeRef.current && captions?.length > 0) {
+    if (captions?.length > 0) {
       const latestCaption = captions[captions.length - 1];
       if (latestCaption.text) {
-        // Use postMessage to push the text seamlessly into the Angular NGXS Store without reloading the page
-        console.log("Piping text to 3D Avatar:", latestCaption.text);
-        
-        // Ensure we send a default signed language if none is present to avoid "Access Denied"
-        avatarIframeRef.current.contentWindow.postMessage({
-          type: 'SET_TEXT',
-          text: latestCaption.text,
-          signedLanguage: 'ase' // Default to American Sign Language if not specified
-        }, '*');
+        // Pipe to 3D Avatar if enabled
+        if (isAvatarEnabled && avatarIframeRef.current) {
+          console.log("Piping text to 3D Avatar:", latestCaption.text);
+          avatarIframeRef.current.contentWindow.postMessage({
+            type: 'SET_TEXT',
+            text: latestCaption.text,
+            signedLanguage: 'ase'
+          }, '*');
+        }
+
+        // Speak text if speech synthesis is enabled (for accessibility)
+        if (isSpeechEnabled) {
+          speakText(latestCaption.text);
+        }
+
+        // Play Morse code audio if Morse output is enabled
+        if (isMorseOutputEnabled) {
+          const morseCode = textToMorse(latestCaption.text);
+          playMorseAudio(morseCode);
+        }
       }
     }
-  }, [captions, isAvatarEnabled]);
+  }, [captions, isAvatarEnabled, isSpeechEnabled, isMorseOutputEnabled]);
 
   // Morse Code Input Handling
   useEffect(() => {
@@ -304,6 +364,10 @@ const Room = () => {
   const handleMorseTranslate = () => {
     if (socket) {
       socket.emit("approve", { epoch: Date.now() });
+      // Speak the decoded Morse text for immediate feedback
+      if (morseText) {
+        speakText(morseText);
+      }
     }
   };
 
@@ -708,6 +772,8 @@ const Room = () => {
             toggleAvatar={() => setIsAvatarEnabled(!isAvatarEnabled)}
             isMorseEnabled={isMorseEnabled}
             toggleMorse={() => setIsMorseEnabled(!isMorseEnabled)}
+            isMorseOutputEnabled={isMorseOutputEnabled}
+            toggleMorseOutput={() => setIsMorseOutputEnabled(!isMorseOutputEnabled)}
           />
         )}
 
