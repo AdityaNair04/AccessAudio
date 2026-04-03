@@ -111,6 +111,19 @@ const speakText = (text) => {
   }
 };
 
+const retryMediaStream = async () => {
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === "development") {
+    try {
+      const { quickAudioCheck } = await import("@/utils/audio-diagnostics");
+      console.log("🔍 Running audio diagnostics before retry...");
+      await quickAudioCheck();
+    } catch (e) {
+      console.warn("Audio diagnostics not available:", e);
+    }
+  }
+  window.location.reload();
+};
+
 const Room = () => {
   const socket = useSocket();
   const { roomId } = useParams(); 
