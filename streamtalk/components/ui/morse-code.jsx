@@ -11,11 +11,65 @@ const MORSE_CODE = {
   '-----': '0'
 };
 
-const MorseCode = ({ isEnabled, onSignal, onEndLetter, onTranslate, onClear, morseText }) => {
-  const [currentLetter, setCurrentLetter] = useState('');
+const MorseCode = ({
+  isEnabled,
+  onSubmit,
+  onSpeak,
+  onClear,
+  onBufferChange,
+  morseText,
+}) => {
+  const [currentSymbol, setCurrentSymbol] = useState('');
+  const [bufferText, setBufferText] = useState('');
   const [isPressed, setIsPressed] = useState(false);
+  const [readyToSend, setReadyToSend] = useState(false);
   const pressStartRef = useRef(0);
-  const timeoutRef = useRef(null);
+  const letterTimeoutRef = useRef(null);
+
+  const finalizeLetter = () => {
+    if (!currentSymbol) return;
+    const letter = MORSE_CODE[currentSymbol] || '?';
+    const updatedBuffer = bufferText + letter;
+    setBufferText(updatedBuffer);
+    onBufferChange?.(updatedBuffer);
+    setCurrentSymbol('');
+    setReadyToSend(false);
+  };
+
+  const addWordSpace = () => {
+    finalizeLetter();
+    if (bufferText.trim().length > 0) {
+      const updatedBuffer = bufferText + ' ';
+      setBufferText(updatedBuffer);
+      onBufferChange?.(updatedBuffer);
+    }
+    setReadyToSend(false);
+  };
+
+  const finalizeSentence = () => {
+    finalizeLetter();
+    if (bufferText.trim().length > 0) {
+      onSpeak?.(bufferText.trim());
+      setReadyToSend(true);
+    }
+  };
+
+  const submitMessage = () => {
+    if (!bufferText.trim()) return;
+    onSubmit?.(bufferText.trim());
+    setBufferText('');
+    onBufferChange?.('');
+    setCurrentSymbol('');
+    setReadyToSend(false);
+  };
+
+  const clearBuffer = () => {
+    setBufferText('');
+    setCurrentSymbol('');
+    setReadyToSend(false);
+    onBufferChange?.('');
+    onClear?.();
+  };
 
   useEffect(() => {
     if (!isEnabled) return;
@@ -25,24 +79,47 @@ const MorseCode = ({ isEnabled, onSignal, onEndLetter, onTranslate, onClear, mor
         e.preventDefault();
         setIsPressed(true);
         pressStartRef.current = Date.now();
+        if (letterTimeoutRef.current) {
+          clearTimeout(letterTimeoutRef.current);
+          letterTimeoutRef.current = null;
+        }
+      }
+
+      if (e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        addWordSpace();
+      }
+
+      if (e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        finalizeSentence();
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (readyToSend) {
+          submitMessage();
+        }
+      }
+
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        clearBuffer();
       }
     };
 
     const handleKeyUp = (e) => {
       if (e.code === 'Space' && isPressed) {
         e.preventDefault();
-        const duration = Date.now() - pressStartRef.current;
-        const signal = duration < 200 ? 'dot' : 'dash'; // Short press = dot, long = dash
-        onSignal(signal);
-        setCurrentLetter(prev => prev + (signal === 'dot' ? '.' : '-'));
         setIsPressed(false);
+        const duration = Date.now() - pressStartRef.current;
+        const signal = duration < 250 ? '.' : '-';
+        setCurrentSymbol((prev) => prev + signal);
+        if (letterTimeoutRef.current) clearTimeout(letterTimeoutRef.current);
 
-        // Clear timeout for letter end
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => {
-          onEndLetter();
-          setCurrentLetter('');
-        }, 1000); // 1 second pause ends letter
+        letterTimeoutRef.current = setTimeout(() => {
+          finalizeLetter();
+        }, 1800); // 1.8 sec gap indicates end of letter
       }
     };
 
@@ -52,40 +129,39 @@ const MorseCode = ({ isEnabled, onSignal, onEndLetter, onTranslate, onClear, mor
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (letterTimeoutRef.current) clearTimeout(letterTimeoutRef.current);
     };
-  }, [isEnabled, isPressed, onSignal, onEndLetter]);
+  }, [isEnabled, isPressed, currentSymbol, bufferText, readyToSend, onSubmit, onSpeak, onClear, onBufferChange]);
 
   if (!isEnabled) return null;
 
   return (
-    <div className="absolute bottom-32 left-4 w-80 bg-slate-800/90 border border-slate-600 text-white rounded-lg shadow-lg">
+    <div className="absolute bottom-32 left-4 w-96 bg-slate-800/90 border border-slate-600 text-white rounded-lg shadow-lg">
       <div className="p-4">
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-sm font-semibold">Morse Code Input</h3>
-          <div className="flex gap-2">
-            <button
-              onClick={onTranslate}
-              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"
-            >
-              Translate
-            </button>
-            <button
-              onClick={onClear}
-              className="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded"
-            >
-              Clear
-            </button>
-          </div>
+          <button
+            onClick={clearBuffer}
+            className="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+          >
+            Reset
+          </button>
         </div>
+
         <div className="text-xs text-slate-300 mb-2">
-          Press SPACE: Short = Dot (.), Long = Dash (-)
+          SPACE: Dot(.)/Dash(-) | s:    Word Space | e: Finalize+Speak | Enter: Send | Backspace: Clear
         </div>
-        <div className="font-mono text-sm bg-slate-700 p-2 rounded min-h-[2rem]">
-          {morseText || 'Start typing Morse code...'}
+
+        <div className="font-mono text-sm bg-slate-700 p-2 rounded min-h-[2rem] mb-2">
+          {bufferText || 'Buffer is empty'}
         </div>
-        <div className="text-xs text-slate-400 mt-2">
-          Current letter: {currentLetter || 'None'}
+
+        <div className="font-mono text-sm bg-slate-700 p-2 rounded min-h-[2rem] mb-2">
+          Current symbol: {currentSymbol || 'None'}
+        </div>
+
+        <div className="text-xs text-slate-400">
+          {readyToSend ? 'Ready to send (press Enter)' : 'Compose letters and finalize with e.'}
         </div>
       </div>
     </div>

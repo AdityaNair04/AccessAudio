@@ -10,6 +10,8 @@ const usePeer = () => {
   const [myId, setMyId] = useState("");
   const isPeerSet = useRef(false);
   const peerHealthCheckRef = useRef(null);
+  const peerRetryCountRef = useRef(0);
+  const MAX_PEER_RETRIES = 10;
 
   useEffect(() => {
     if (isPeerSet.current || !roomId || !socket) return;
@@ -54,6 +56,7 @@ const usePeer = () => {
         myPeer.on("open", (id) => {
           console.log("✅ PeerJS connected! Your peer ID:", id);
           setMyId(id);
+          peerRetryCountRef.current = 0;
 
           // Start health check to detect connection drops early
           if (peerHealthCheckRef.current) {
@@ -82,13 +85,23 @@ const usePeer = () => {
 
         myPeer.on("error", (error) => {
           console.error("❌ PeerJS error:", error);
-          // Retry connection after a delay
-          setTimeout(() => {
+          peerRetryCountRef.current = Math.min(peerRetryCountRef.current + 1, MAX_PEER_RETRIES);
+
+          if (peerRetryCountRef.current <= MAX_PEER_RETRIES) {
+            setTimeout(() => {
+              if (!myPeer.destroyed) {
+                console.log(`🔄 Retrying PeerJS connection (attempt ${peerRetryCountRef.current})...`);
+                myPeer.reconnect();
+              }
+            }, 2000 + peerRetryCountRef.current * 500);
+          } else {
+            console.error("🚨 PeerJS exceeded maximum retry attempts, reinitializing peer...");
             if (!myPeer.destroyed) {
-              console.log("🔄 Retrying PeerJS connection...");
-              myPeer.reconnect();
+              myPeer.destroy();
             }
-          }, 2000);
+            isPeerSet.current = false;
+            setTimeout(initPeer, 3000);
+          }
         });
 
         myPeer.on("disconnected", () => {
@@ -101,6 +114,11 @@ const usePeer = () => {
         myPeer.on("close", () => {
           console.warn("❌ PeerJS connection fully closed");
           clearInterval(peerHealthCheckRef.current);
+          if (peerRetryCountRef.current < MAX_PEER_RETRIES) {
+            peerRetryCountRef.current += 1;
+            isPeerSet.current = false;
+            setTimeout(initPeer, 2500);
+          }
         });
       } catch (error) {
         console.error("❌ Failed to initialize PeerJS:", error);
@@ -119,6 +137,8 @@ const usePeer = () => {
         console.log("🧹 Cleaning up PeerJS connection...");
         myPeer.destroy();
       }
+      isPeerSet.current = false;
+      peerRetryCountRef.current = 0;
     };
   }, [roomId, socket]);
 

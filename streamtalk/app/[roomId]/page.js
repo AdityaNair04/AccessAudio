@@ -167,11 +167,8 @@ const Room = () => {
   const [isMorseOutputEnabled, setIsMorseOutputEnabled] = useState(false);
   const [morseText, setMorseText] = useState('');
   const avatarIframeRef = useRef(null);
-  const morseSequenceRef = useRef('');
-  const morseTextRef = useRef('');
-  const lastKeyUpTimeRef = useRef(0);
-  const isSpacePressedRef = useRef(false);
-  const spaceDownTimeRef = useRef(0);
+  const [morseDraft, setMorseDraft] = useState('');
+  const [showMorseReady, setShowMorseReady] = useState(false);
 
   const callState = useRef({});
   const CALL_RETRY_MAX = 4;
@@ -297,60 +294,6 @@ const Room = () => {
     }
   }, [captions, isAvatarEnabled, isSpeechEnabled, isMorseOutputEnabled]);
 
-  // Morse Code Input Handling
-  useEffect(() => {
-    if (!isMorseEnabled) return;
-
-    const handleKeyDown = (e) => {
-      if (e.code === 'Space' && !isSpacePressedRef.current) {
-        e.preventDefault();
-        isSpacePressedRef.current = true;
-        spaceDownTimeRef.current = Date.now();
-      }
-    };
-
-    const handleKeyUp = (e) => {
-      if (e.code === 'Space' && isSpacePressedRef.current) {
-        e.preventDefault();
-        isSpacePressedRef.current = false;
-        const duration = Date.now() - spaceDownTimeRef.current;
-        const signal = duration > 200 ? '-' : '.';
-        morseSequenceRef.current += signal;
-        lastKeyUpTimeRef.current = Date.now();
-      }
-    };
-
-    const checkForLetter = () => {
-      const now = Date.now();
-      if (morseSequenceRef.current && (now - lastKeyUpTimeRef.current) > 500) {
-        const letter = MORSE_CODE[morseSequenceRef.current];
-        if (letter) {
-          morseTextRef.current += letter;
-          console.log(`Morse Letter: ${letter}, Text: ${morseTextRef.current}`);
-        }
-        morseSequenceRef.current = '';
-      }
-      if (morseTextRef.current && (now - lastKeyUpTimeRef.current) > 1000) {
-        // Send the word as a chat message
-        if (sendMessage && morseTextRef.current.trim()) {
-          sendMessage(`[Morse] ${morseTextRef.current}`);
-          console.log(`Sent Morse message: ${morseTextRef.current}`);
-        }
-        morseTextRef.current = '';
-      }
-    };
-
-    const interval = setInterval(checkForLetter, 100);
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [isMorseEnabled, sendMessage]);
 
   // Call duration timer
   useEffect(() => {
@@ -361,34 +304,25 @@ const Room = () => {
     return () => clearInterval(timer);
   }, [callStartTime]);
 
-  // Morse Code handlers
-  const handleMorseSignal = (signal) => {
-    if (socket) {
-      socket.emit("morse_signal", { signal });
-    }
+  // Morse Code handlers (user-driven explicit workflow)
+  const handleMorseSubmit = (text) => {
+    if (!text || !socket) return;
+    setMorseText(text);
+    sendMessage(`[Morse] ${text}`);
+    // Also send caption stream to AI/room as standard caption
+    sendCaption({ text: `[Morse] ${text}`, emotion: 'Neutral' });
+    setShowMorseReady(false);
   };
 
-  const handleMorseEndLetter = () => {
-    if (socket) {
-      socket.emit("morse_end_letter");
-    }
-  };
-
-  const handleMorseTranslate = () => {
-    if (socket) {
-      socket.emit("approve", { epoch: Date.now() });
-      // Speak the decoded Morse text for immediate feedback
-      if (morseText) {
-        speakText(morseText);
-      }
-    }
+  const handleMorseSpeak = (text) => {
+    if (!text) return;
+    speakText(text);
+    setShowMorseReady(true);
   };
 
   const handleMorseClear = () => {
     setMorseText('');
-    if (socket) {
-      socket.emit("clear", { epoch: Date.now() });
-    }
+    setShowMorseReady(false);
   };
 
   useEffect(() => {
@@ -757,10 +691,10 @@ const Room = () => {
           {/* Morse Code Input */}
           <MorseCode
             isEnabled={isMorseEnabled}
-            onSignal={handleMorseSignal}
-            onEndLetter={handleMorseEndLetter}
-            onTranslate={handleMorseTranslate}
+            onSubmit={handleMorseSubmit}
+            onSpeak={handleMorseSpeak}
             onClear={handleMorseClear}
+            onBufferChange={setMorseText}
             morseText={morseText}
           />
 
