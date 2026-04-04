@@ -6,6 +6,7 @@ export const VibrationSetupModal = ({
   onClose,
   connectionStatus,
   hapticBridgeConnected,
+  bridgeUrl,
   onStartBridge
 }) => {
   const [step, setStep] = useState(0);
@@ -85,14 +86,31 @@ export const VibrationSetupModal = ({
           </div>
 
           <p className="text-sm text-gray-600">
-            This will open a popup window on your phone where the vibration bridge runs.
+            This will open a preview window in your browser. On your phone, open the bridge URL below and keep it open while using vibration output.
           </p>
+
+          {bridgeUrl && (
+            <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200 text-sm text-slate-700">
+              <p className="font-medium text-slate-900 mb-2">Open this URL on your mobile device:</p>
+              <div className="flex flex-col gap-2">
+                <code className="break-words p-3 bg-white rounded-lg border border-slate-200">{bridgeUrl}</code>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(bridgeUrl).catch(() => {});
+                  }}
+                  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 transition-colors"
+                >
+                  Copy Bridge URL
+                </button>
+              </div>
+            </div>
+          )}
 
           {bridgeStarted && (
             <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
               <div className="flex items-center gap-2 text-green-800">
                 <CheckCircle className="w-4 h-4" />
-                <span className="text-sm font-medium">Bridge popup opened successfully!</span>
+                <span className="text-sm font-medium">Bridge ready for mobile connection.</span>
               </div>
             </div>
           )}

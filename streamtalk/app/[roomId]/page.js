@@ -170,11 +170,11 @@ const Room = () => {
   const avatarIframeRef = useRef(null);
   const [morseDraft, setMorseDraft] = useState('');
   const [showMorseReady, setShowMorseReady] = useState(false);
-  const hapticSocketRef = useRef(null);
   const lastSpokenCaptionRef = useRef(null);
   const [showVibrationSetup, setShowVibrationSetup] = useState(false);
   const [hapticBridgeConnected, setHapticBridgeConnected] = useState(false);
   const [bridgeWindow, setBridgeWindow] = useState(null);
+  const [bridgeUrl, setBridgeUrl] = useState('');
 
   const callState = useRef({});
   const CALL_RETRY_MAX = 4;
@@ -334,111 +334,67 @@ const Room = () => {
     setShowMorseReady(false);
   };
 
-  // Start vibration bridge (opens in new window)
+  // Start vibration bridge and create a mobile bridge URL
   const onStartBridge = () => {
+    if (typeof window === 'undefined') return;
+
+    const url = `${window.location.origin}/api/vibration-bridge?roomId=${encodeURIComponent(roomId)}`;
+    setBridgeUrl(url);
+
     try {
-      // Open bridge in new window
-      const bridgeUrl = `${window.location.origin}/api/vibration-bridge`;
       const newWindow = window.open(
-        bridgeUrl,
+        url,
         'vibration-bridge',
         'width=500,height=700,scrollbars=yes,resizable=yes'
       );
 
       if (newWindow) {
         setBridgeWindow(newWindow);
-        console.log('🌉 Opened vibration bridge window');
+        console.log('🌉 Opened vibration bridge preview window');
 
-        // Check if window is closed
         const checkClosed = setInterval(() => {
           if (newWindow.closed) {
             clearInterval(checkClosed);
             setBridgeWindow(null);
-            setBridgeSocket(null);
             setHapticBridgeConnected(false);
-            console.log('🌉 Bridge window closed');
+            console.log('🌉 Bridge preview window closed');
           }
         }, 1000);
-
-        // Wait a bit for the bridge to load, then establish connection
-        setTimeout(() => {
-          if (!newWindow.closed) {
-            establishBridgeConnection();
-          }
-        }, 2000);
       } else {
         console.warn('⚠️ Could not open bridge window. Please allow popups for this site.');
-        alert('Please allow popups for this site to use the vibration feature.');
+        alert('Please allow popups for this site to use the vibration bridge.');
       }
     } catch (error) {
       console.error('❌ Error starting bridge:', error);
     }
   };
 
-  // Establish connection to bridge via postMessage
-  const establishBridgeConnection = () => {
-    try {
-      if (bridgeWindow && !bridgeWindow.closed) {
-        console.log('✅ Bridge window is open, connection established');
-        setHapticBridgeConnected(true);
-
-        // Listen for messages from bridge
-        const messageHandler = (event) => {
-          // Only accept messages from our bridge origin
-          if (event.source === bridgeWindow) {
-            if (event.data.type === 'BRIDGE_READY') {
-              console.log('✅ Bridge confirmed ready');
-              setHapticBridgeConnected(true);
-            } else if (event.data.type === 'BRIDGE_CLOSED') {
-              console.log('🔌 Bridge window closed');
-              setHapticBridgeConnected(false);
-              setBridgeWindow(null);
-              window.removeEventListener('message', messageHandler);
-            }
-          }
-        };
-
-        window.addEventListener('message', messageHandler);
-
-        // Send ready signal to bridge
-        setTimeout(() => {
-          if (bridgeWindow && !bridgeWindow.closed) {
-            bridgeWindow.postMessage({ type: 'MAIN_APP_READY' }, '*');
-          }
-        }, 1000);
-
-      } else {
-        console.warn('❌ Bridge window not available');
-        setHapticBridgeConnected(false);
-      }
-    } catch (error) {
-      console.error('❌ Error establishing bridge connection:', error);
-    }
-  };
-
   // Vibration output logic
-  const sendVibration = (text) => {
-    if (!isVibrationEnabled || !text || !bridgeWindow || bridgeWindow.closed) return;
+  const sendVibration = async (text) => {
+    if (!isVibrationEnabled || !text) return;
 
     try {
-      // Convert text to Morse
       const morse = textToMorse(text);
       const pattern = morseToVibrationPattern(morse);
 
-      // Send to bridge via postMessage
-      const vibrationData = {
-        type: 'VIBRATE_MOBILE',
-        data: {
+      await fetch(`/api/vibration-bridge?roomId=${encodeURIComponent(roomId)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          roomId,
           text,
           morse,
-          pattern
-        }
-      };
+          pattern,
+        }),
+      });
 
-      bridgeWindow.postMessage(vibrationData, '*');
-      console.log(`📳 Sent vibration to bridge: "${text}" → ${morse}`);
+      console.log(`📳 Sent vibration command: "${text}" → ${morse}`);
+      setHapticBridgeConnected(true);
     } catch (error) {
       console.warn('❌ Failed to send vibration:', error);
+      setHapticBridgeConnected(false);
     }
   };
 
@@ -504,52 +460,8 @@ const Room = () => {
 
   // Connect/disconnect to haptic bridge
   useEffect(() => {
-    if (isVibrationEnabled && typeof window !== 'undefined') {
-      // Show setup guide on first vibration enable
+    if (isVibrationEnabled) {
       setShowVibrationSetup(true);
-
-      try {
-        hapticSocketRef.current = io('http://localhost:5000', {
-          transports: ['websocket', 'polling'],
-          reconnection: true,
-          reconnectionDelay: 1000,
-          reconnectionDelayMax: 5000,
-          reconnectionAttempts: 5
-        });
-
-        hapticSocketRef.current.on('connect', () => {
-          console.log('✅ Connected to haptic bridge at localhost:5000');
-          setHapticBridgeConnected(true);
-        });
-
-        hapticSocketRef.current.on('connect_error', (error) => {
-          console.warn('❌ Haptic bridge connection error:', error?.message || error);
-          console.warn('⚠️ Make sure haptic_bridge.py is running: python haptic_bridge.py');
-          setHapticBridgeConnected(false);
-        });
-
-        hapticSocketRef.current.on('disconnect', () => {
-          console.log('🔌 Disconnected from haptic bridge');
-          setHapticBridgeConnected(false);
-        });
-
-        return () => {
-          if (hapticSocketRef.current) {
-            hapticSocketRef.current.disconnect();
-            hapticSocketRef.current = null;
-          }
-        };
-      } catch (error) {
-        console.warn('❌ Could not initialize haptic bridge connection:', error?.message || error);
-        console.warn('⚠️ Make sure haptic_bridge.py is running on localhost:5000');
-        setHapticBridgeConnected(false);
-      }
-    } else {
-      if (hapticSocketRef.current) {
-        hapticSocketRef.current.disconnect();
-        hapticSocketRef.current = null;
-      }
-      setHapticBridgeConnected(false);
     }
   }, [isVibrationEnabled]);
 
@@ -970,6 +882,7 @@ const Room = () => {
         onClose={() => setShowVibrationSetup(false)}
         connectionStatus={hapticBridgeConnected}
         hapticBridgeConnected={hapticBridgeConnected}
+        bridgeUrl={bridgeUrl}
         onStartBridge={onStartBridge}
       />
     </>

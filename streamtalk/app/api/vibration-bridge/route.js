@@ -1,8 +1,91 @@
-import { NextResponse } from 'next/server';
+﻿const bridgeCommandQueues = new Map();
+const bridgeClients = new Map();
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
+let lastCleanup = Date.now();
 
-export async function GET() {
-  const html = `
-<!DOCTYPE html>
+const cleanupBridgeState = () => {
+  const now = Date.now();
+
+  for (const [clientId, client] of bridgeClients.entries()) {
+    if (now - client.lastSeen > INACTIVITY_TIMEOUT_MS) {
+      bridgeClients.delete(clientId);
+    }
+  }
+
+  for (const [roomId, queue] of bridgeCommandQueues.entries()) {
+    if (queue.length === 0) {
+      bridgeCommandQueues.delete(roomId);
+    }
+  }
+};
+
+const ensureRoomQueue = (roomId) => {
+  if (!bridgeCommandQueues.has(roomId)) {
+    bridgeCommandQueues.set(roomId, []);
+  }
+  return bridgeCommandQueues.get(roomId);
+};
+
+const enqueueBridgeCommand = (roomId, command) => {
+  const queue = ensureRoomQueue(roomId);
+  queue.push({
+    ...command,
+    createdAt: Date.now(),
+  });
+};
+
+const drainBridgeCommands = (roomId) => {
+  const queue = ensureRoomQueue(roomId);
+  const commands = [...queue];
+  queue.length = 0;
+  return commands;
+};
+
+export async function GET(request) {
+  if (Date.now() - lastCleanup > 60000) {
+    cleanupBridgeState();
+    lastCleanup = Date.now();
+  }
+
+  const url = new URL(request.url);
+  const roomId = url.searchParams.get('roomId');
+  const action = url.searchParams.get('action');
+  const clientId = url.searchParams.get('clientId');
+
+  if (action === 'poll') {
+    if (!roomId || !clientId) {
+      return new Response(JSON.stringify({ error: 'Missing roomId or clientId' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    bridgeClients.set(clientId, { roomId, lastSeen: Date.now() });
+    const commands = drainBridgeCommands(roomId);
+
+    return new Response(JSON.stringify({ success: true, commands }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (action === 'status') {
+    if (!roomId) {
+      return new Response(JSON.stringify({ error: 'Missing roomId' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const activeClientCount = Array.from(bridgeClients.values()).filter(
+      (client) => client.roomId === roomId
+    ).length;
+
+    return new Response(JSON.stringify({ success: true, activeClientCount }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -30,7 +113,7 @@ export async function GET() {
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             padding: 40px;
-            max-width: 400px;
+            max-width: 420px;
             width: 100%;
             text-align: center;
         }
@@ -94,6 +177,20 @@ export async function GET() {
             animation: none;
         }
 
+        .connection-detail {
+            font-size: 12px;
+            color: #555;
+            margin-top: 4px;
+        }
+
+        .status-indicator.disconnected .connection-detail {
+            color: #721c24;
+        }
+
+        .status-indicator.connected .connection-detail {
+            color: #155724;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -104,7 +201,7 @@ export async function GET() {
             padding: 20px;
             border-radius: 10px;
             margin: 20px 0;
-            min-height: 100px;
+            min-height: 120px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -112,7 +209,7 @@ export async function GET() {
         }
 
         .vibration-text {
-            font-size: 28px;
+            font-size: 26px;
             color: #333;
             font-weight: bold;
             margin-bottom: 10px;
@@ -186,123 +283,64 @@ export async function GET() {
         <div class="header">
             <div class="icon">🌉</div>
             <h1>Vibration Bridge</h1>
-            <p class="subtitle">Connecting laptop to mobile</p>
+            <p class="subtitle">Open this page on your mobile device</p>
         </div>
 
         <div id="statusIndicator" class="status-indicator disconnected">
             <span class="status-dot"></span>
-            <span id="statusText">Connecting to main app...</span>
+            <div>
+                <div id="statusText">Waiting for commands...</div>
+                <div id="connectionDetail" class="connection-detail">Polling inactive</div>
+            </div>
         </div>
 
         <div class="vibration-display">
-            <div id="vibrationText" class="vibration-text">-</div>
-            <div id="vibrationMorse" class="vibration-morse"></div>
+            <div id="vibrationText" class="vibration-text">Waiting</div>
+            <div id="vibrationMorse" class="vibration-morse">-</div>
             <div id="vibrationIndicator" class="vibration-indicator" style="display: none;">📳</div>
             <div class="dot-pattern" id="dotPattern"></div>
-            <div class="vibration-status" id="vibrationStatus">Waiting for vibration data...</div>
+            <div class="vibration-status" id="vibrationStatus">Keep this page open to receive vibration commands.</div>
         </div>
 
         <div class="info-box">
-            <strong>ℹ️ Bridge Status:</strong><br>
+            <strong>ℹ️ Mobile Bridge:</strong><br>
             <br>
-            This page acts as a bridge between your laptop and mobile device. Keep this page open on your phone while using the vibration feature in the main app.
+            This page receives vibration commands from the main app and plays them using your phone's vibration motor.
             <br><br>
-            <strong>Connection:</strong> <span id="connectionStatus">Establishing...</span>
+            <strong>Tip:</strong> Keep the page active while you use the app.
         </div>
     </div>
 
     <script>
-        let mainAppWindow = null;
-
-        // Try to find the main app window (opener)
-        if (window.opener) {
-            mainAppWindow = window.opener;
-            console.log('✅ Found main app window (opener)');
-        } else {
-            // Fallback: try to find it by iterating through windows
-            try {
-                const windows = window.parent.frames;
-                for (let i = 0; i < windows.length; i++) {
-                    if (windows[i] !== window) {
-                        mainAppWindow = windows[i];
-                        break;
-                    }
-                }
-            } catch (e) {
-                console.warn('Could not find main app window');
-            }
-        }
-
+        const params = new URLSearchParams(window.location.search);
+        const roomId = params.get('roomId');
+        const clientId = 'bridge_' + Math.random().toString(36).slice(2);
         const statusIndicator = document.getElementById('statusIndicator');
         const statusText = document.getElementById('statusText');
+        const connectionDetail = document.getElementById('connectionDetail');
         const vibrationText = document.getElementById('vibrationText');
         const vibrationMorse = document.getElementById('vibrationMorse');
         const vibrationStatus = document.getElementById('vibrationStatus');
         const vibrationIndicator = document.getElementById('vibrationIndicator');
         const dotPattern = document.getElementById('dotPattern');
-        const connectionStatus = document.getElementById('connectionStatus');
 
-        // Vibration strengths (ms)
         const DOT_DURATION = 200;
         const DASH_DURATION = 600;
         const GAP_DURATION = 200;
+        const LETTER_GAP = 1000;
+        const WORD_GAP = 1500;
 
-        // Listen for messages from main app
-        window.addEventListener('message', async (event) => {
-            if (event.data.type === 'MAIN_APP_READY') {
-                console.log('✅ Main app confirmed ready');
-                updateStatus('Connected to main app', true);
-                connectionStatus.textContent = '✅ Connected';
-                connectionStatus.style.color = '#28a745';
-
-                // Send ready signal back
-                if (mainAppWindow) {
-                    mainAppWindow.postMessage({ type: 'BRIDGE_READY' }, '*');
-                }
-            } else if (event.data.type === 'VIBRATE_MOBILE') {
-                const { text, morse, pattern } = event.data.data;
-
-                console.log(\`📳 Received vibration: "\${text}"\`);
-                console.log(\`    Morse: \${morse}\`);
-                console.log(\`    Pattern: \${pattern}\`);
-
-                // Update display
-                vibrationText.textContent = text;
-                vibrationMorse.textContent = morse;
-                vibrationStatus.textContent = 'Vibrating...';
-
-                // Show dot pattern visualization
-                displayDotPattern(morse);
-
-                // Execute vibration pattern
-                await playVibrationPattern(pattern);
-
-                vibrationStatus.textContent = 'Complete ✓';
-            }
-        });
-
-        // Handle window close
-        window.addEventListener('beforeunload', () => {
-            if (mainAppWindow) {
-                mainAppWindow.postMessage({ type: 'BRIDGE_CLOSED' }, '*');
-            }
-        });
-
-        // Initialize
-        if (mainAppWindow) {
-            updateStatus('Connecting to main app...', true);
-            connectionStatus.textContent = '🔄 Connecting...';
-            console.log('🌉 Vibration Bridge initialized');
-            console.log('🔗 Waiting for main app signal...');
+        if (!roomId) {
+            updateStatus('Missing roomId in URL', false);
+            vibrationStatus.textContent = 'Open the bridge from the app with a valid room URL.';
         } else {
-            updateStatus('No main app connection found', false);
-            connectionStatus.textContent = '❌ No connection';
-            connectionStatus.style.color = '#dc3545';
-            vibrationStatus.textContent = 'Cannot connect to main app. Please refresh.';
+            updateStatus('Ready to receive commands', false, 'Waiting for polling');
+            startPolling();
         }
 
-        function updateStatus(text, connected) {
-            statusText.textContent = text;
+        function updateStatus(message, connected, detail = '') {
+            statusText.textContent = message;
+            connectionDetail.textContent = detail || (connected ? 'Polling active' : 'Polling inactive');
             if (connected) {
                 statusIndicator.className = 'status-indicator connected';
             } else {
@@ -310,10 +348,52 @@ export async function GET() {
             }
         }
 
+        async function pollCommands() {
+            if (!roomId) return;
+
+            try {
+                const url = '/api/vibration-bridge?roomId=' + encodeURIComponent(roomId) + '&action=poll&clientId=' + encodeURIComponent(clientId);
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!data.success) {
+                    updateStatus('Bridge polling error', false, 'Polling disconnected');
+                    vibrationStatus.textContent = data.error || 'Unexpected polling response.';
+                    return;
+                }
+
+                updateStatus('Connected to app bridge', true, 'Polling active');
+
+                if (Array.isArray(data.commands) && data.commands.length > 0) {
+                    for (const command of data.commands) {
+                        await handleVibrationCommand(command);
+                    }
+                }
+            } catch (error) {
+                console.warn('Bridge poll failed', error);
+                updateStatus('Polling failed', false, 'Polling disconnected');
+                vibrationStatus.textContent = 'Unable to reach bridge server. Check your network connection.';
+            }
+        }
+
+        function startPolling() {
+            pollCommands();
+            setInterval(pollCommands, 1500);
+        }
+
+        async function handleVibrationCommand(command) {
+            const { text, morse, pattern } = command;
+            vibrationText.textContent = text || 'Vibration';
+            vibrationMorse.textContent = morse || '';
+            vibrationStatus.textContent = 'Vibrating...';
+            displayDotPattern(morse || '');
+            await playVibrationPattern(pattern || []);
+            vibrationStatus.textContent = 'Complete ✓';
+        }
+
         function displayDotPattern(morse) {
             dotPattern.innerHTML = '';
             const symbols = morse.split(' ');
-            let delay = 0;
 
             for (const symbol of symbols) {
                 if (symbol === '/') {
@@ -325,22 +405,7 @@ export async function GET() {
                     for (const char of symbol) {
                         const dot = document.createElement('div');
                         dot.className = 'dot';
-                        dot.textContent = char;
-                        dot.style.fontSize = '10px';
-                        dot.style.display = 'flex';
-                        dot.style.alignItems = 'center';
-                        dot.style.justifyContent = 'center';
-                        dot.style.color = 'white';
-                        dot.style.fontWeight = 'bold';
                         dotPattern.appendChild(dot);
-
-                        // Animate dot activation
-                        setTimeout(() => {
-                            dot.classList.add('active');
-                            setTimeout(() => dot.classList.remove('active'), 300);
-                        }, delay);
-
-                        delay += char === '.' ? DOT_DURATION + GAP_DURATION : DASH_DURATION + GAP_DURATION;
                     }
                     const spacer = document.createElement('div');
                     spacer.style.width = '2px';
@@ -352,50 +417,64 @@ export async function GET() {
         async function playVibrationPattern(pattern) {
             vibrationIndicator.style.display = 'block';
 
-            for (let i = 0; i < pattern.length; i++) {
-                const duration = pattern[i];
-
+            for (const duration of pattern) {
                 if (duration > 0) {
-                    // Vibrate
                     if (navigator.vibrate) {
                         navigator.vibrate(duration);
-                    } else if (navigator.webkitVibrate) {
-                        navigator.webkitVibrate(duration);
                     }
-                    console.log(\`🔔 Vibrating for \${duration}ms\`);
                     await sleep(duration);
                 } else {
-                    // Silence (wait)
-                    console.log(\`⏸️  Silent for \${Math.abs(duration)}ms\`);
                     await sleep(Math.abs(duration));
                 }
             }
 
             vibrationIndicator.style.display = 'none';
-
-            // Stop any remaining vibration
             if (navigator.vibrate) {
                 navigator.vibrate(0);
-            } else if (navigator.webkitVibrate) {
-                navigator.webkitVibrate(0);
             }
         }
 
         function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
+            return new Promise((resolve) => setTimeout(resolve, ms));
         }
-
-        // Log initial connection attempt
-        console.log('🌉 Vibration Bridge initialized');
-        console.log('🔗 Connecting to main app...');
     </script>
 </body>
-</html>
-  `;
+</html>`;
 
   return new Response(html, {
     headers: {
       'Content-Type': 'text/html',
     },
   });
+}
+
+export async function POST(request) {
+  if (Date.now() - lastCleanup > 60000) {
+    cleanupBridgeState();
+    lastCleanup = Date.now();
+  }
+
+  try {
+    const body = await request.json();
+    const { roomId, text, morse, pattern } = body;
+
+    if (!roomId || !text || !morse || !pattern) {
+      return new Response(
+        JSON.stringify({ error: 'roomId, text, morse, and pattern are required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    enqueueBridgeCommand(roomId, { text, morse, pattern });
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Vibration bridge POST error:', error);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 }
