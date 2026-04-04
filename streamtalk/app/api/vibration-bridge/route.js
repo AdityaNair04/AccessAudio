@@ -309,6 +309,22 @@ export async function GET(request) {
             <br><br>
             <strong>Tip:</strong> Keep the page active while you use the app.
         </div>
+
+        <div class="info-box" style="background: #fff3cd; border-left-color: #ff9800; margin-top: 15px;">
+            <strong>🔧 Vibration Troubleshooting:</strong><br>
+            <button id="testVibrationBtn" style="margin-top: 10px; padding: 8px 12px; background: #ff9800; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">📳 Test Vibration</button>
+            <p style="margin-top: 8px; font-size: 11px;">
+                <strong>Not feeling vibrations?</strong> 
+                <br>✓ Check: Settings → Sound and vibration → Enable vibration
+                <br>✓ Check: Settings → Accessibility → Vibration and haptics
+                <br>✓ Check: Device is not in silent mode
+                <br>✓ Check: Browser tab is active (not in background)
+                <br>✓ Check: App permissions allow vibration
+            </p>
+            <div id="vibrationDiagnostics" style="margin-top: 8px; font-size: 11px; color: #666; background: white; padding: 8px; border-radius: 3px; max-height: 100px; overflow-y: auto; font-family: monospace;">
+                Diagnostics: (testing...)
+            </div>
+        </div>
     </div>
 
     <script>
@@ -323,6 +339,8 @@ export async function GET(request) {
         const vibrationStatus = document.getElementById('vibrationStatus');
         const vibrationIndicator = document.getElementById('vibrationIndicator');
         const dotPattern = document.getElementById('dotPattern');
+        const testVibrationBtn = document.getElementById('testVibrationBtn');
+        const diagnosticsDiv = document.getElementById('vibrationDiagnostics');
 
         const DOT_DURATION = 200;
         const DASH_DURATION = 600;
@@ -330,12 +348,67 @@ export async function GET(request) {
         const LETTER_GAP = 1000;
         const WORD_GAP = 1500;
 
+        // Diagnostic logging
+        function addDiagnostic(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const line = '[' + timestamp + '] ' + message;
+            console.log(line);
+            diagnosticsDiv.textContent = diagnosticsDiv.textContent + '\\n' + line;
+            diagnosticsDiv.scrollTop = diagnosticsDiv.scrollHeight;
+        }
+
+        // Check vibration support
+        function checkVibrationSupport() {
+            if (navigator.vibrate) {
+                addDiagnostic('✓ Vibration API: SUPPORTED');
+                return true;
+            } else {
+                addDiagnostic('✗ Vibration API: NOT SUPPORTED');
+                return false;
+            }
+        }
+
+        checkVibrationSupport();
+
+        // Test vibration button handler
+        if (testVibrationBtn) {
+            testVibrationBtn.addEventListener('click', async () => {
+                addDiagnostic('🔧 TEST VIBRATION INITIATED');
+                try {
+                    // Test 1: Simple short vibration
+                    addDiagnostic('📳 Test 1: 200ms vibration...');
+                    navigator.vibrate(200);
+                    await new Promise(resolve => setTimeout(resolve, 300));
+
+                    // Test 2: Pattern vibration
+                    addDiagnostic('📳 Test 2: Pattern (200-100-200)...');
+                    navigator.vibrate([200, 100, 200]);
+                    await new Promise(resolve => setTimeout(resolve, 700));
+
+                    // Test 3: International morse "SOS"
+                    addDiagnostic('📳 Test 3: SOS morse pattern...');
+                    navigator.vibrate([100, 100, 100, 200, 300, 200, 300, 200, 300, 200, 100, 100, 100]);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                    addDiagnostic('✓ TEST VIBRATION COMPLETE');
+                    addDiagnostic('If you felt vibrations above, the API is working!');
+                    addDiagnostic('If you felt NOTHING, check Android settings.');
+                } catch (error) {
+                    addDiagnostic('✗ Error during test: ' + error.message);
+                }
+            });
+        }
+
         if (!roomId) {
             updateStatus('Missing roomId in URL', false);
+            addDiagnostic('✗ ERROR: No roomId parameter in URL');
             vibrationStatus.textContent = 'Open the bridge from the app with a valid room URL.';
         } else {
+            addDiagnostic('✓ Room ID: ' + roomId.substring(0, 8) + '...');
+            addDiagnostic('✓ Client ID: ' + clientId.substring(0, 8) + '...');
             updateStatus('Ready to receive commands', false, 'Waiting for polling');
             startPolling();
+            addDiagnostic('✓ Polling started (every 1.5 seconds)');
         }
 
         function updateStatus(message, connected, detail = '') {
@@ -357,6 +430,7 @@ export async function GET(request) {
                 const data = await response.json();
 
                 if (!data.success) {
+                    addDiagnostic('⚠️  Poll error: ' + (data.error || 'Unknown error'));
                     updateStatus('Bridge polling error', false, 'Polling disconnected');
                     vibrationStatus.textContent = data.error || 'Unexpected polling response.';
                     return;
@@ -365,12 +439,14 @@ export async function GET(request) {
                 updateStatus('Connected to app bridge', true, 'Polling active');
 
                 if (Array.isArray(data.commands) && data.commands.length > 0) {
+                    addDiagnostic('📬 Received ' + data.commands.length + ' command(s)');
                     for (const command of data.commands) {
                         await handleVibrationCommand(command);
                     }
                 }
             } catch (error) {
                 console.warn('Bridge poll failed', error);
+                addDiagnostic('✗ Poll connection failed: ' + error.message);
                 updateStatus('Polling failed', false, 'Polling disconnected');
                 vibrationStatus.textContent = 'Unable to reach bridge server. Check your network connection.';
             }
@@ -383,12 +459,15 @@ export async function GET(request) {
 
         async function handleVibrationCommand(command) {
             const { text, morse, pattern } = command;
+            addDiagnostic('📖 Received command: "' + text + '"');
             vibrationText.textContent = text || 'Vibration';
             vibrationMorse.textContent = morse || '';
             vibrationStatus.textContent = 'Vibrating...';
             displayDotPattern(morse || '');
+            addDiagnostic('📳 Playing pattern: ' + JSON.stringify(pattern) + ' (' + pattern.length + ' events)');
             await playVibrationPattern(pattern || []);
             vibrationStatus.textContent = 'Complete ✓';
+            addDiagnostic('✓ Vibration playback complete');
         }
 
         function displayDotPattern(morse) {
@@ -421,9 +500,13 @@ export async function GET(request) {
                 if (duration > 0) {
                     if (navigator.vibrate) {
                         navigator.vibrate(duration);
+                        addDiagnostic('📳 Vibrate: ' + duration + 'ms');
+                    } else {
+                        addDiagnostic('✗ Vibrate called but API not available!');
                     }
                     await sleep(duration);
                 } else {
+                    addDiagnostic('⏸️  Pause: ' + Math.abs(duration) + 'ms');
                     await sleep(Math.abs(duration));
                 }
             }
