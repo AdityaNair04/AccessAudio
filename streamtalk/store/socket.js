@@ -41,38 +41,38 @@ class APISocket {
           this.connectionStatus = "connecting";
           this.trigger("connecting");
 
-          const joinResponse = await fetch(
-            `${baseUrl}/api/socket?action=join-room&roomId=${roomId}&userId=${userId}`
-          );
-          const joinData = await joinResponse.json();
+          const joinData = await this.makeAPICall("join-room", {
+          roomId,
+          userId,
+        });
 
-          if (joinData.success) {
-            this.sessionId = joinData.sessionId;
-            this.isConnected = true;
-            this.isConnecting = false;
-            this.connectionStatus = "connected";
-            this.reconnectAttempts = 0;
-            this.startPolling();
-            this.trigger("connect");
-            this.trigger("joined-room", roomId);
+        if (joinData.success) {
+          this.sessionId = joinData.sessionId;
+          this.isConnected = true;
+          this.isConnecting = false;
+          this.connectionStatus = "connected";
+          this.reconnectAttempts = 0;
+          this.startPolling();
+          this.trigger("connect");
+          this.trigger("joined-room", roomId);
 
-            // Notify about existing users
-            if (joinData.roomUsers) {
-              joinData.roomUsers.forEach((userId) => {
-                if (userId !== this.userId) {
-                  this.trigger("user-connected", userId);
-                }
-              });
-            }
-          } else {
-            this.isConnecting = false;
-            this.connectionStatus = "error";
-            this.trigger(
-              "connect_error",
-              new Error(joinData.error || "Failed to join room")
-            );
+          // Notify about existing users
+          if (joinData.roomUsers) {
+            joinData.roomUsers.forEach((userId) => {
+              if (userId !== this.userId) {
+                this.trigger("user-connected", userId);
+              }
+            });
           }
-          break;
+        } else {
+          this.isConnecting = false;
+          this.connectionStatus = "error";
+          this.trigger(
+            "connect_error",
+            new Error(joinData.error || "Failed to join room")
+          );
+        }
+        break;
 
         case "user-toggle-audio":
           const [audioUserId, audioRoomId] = args;
