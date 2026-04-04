@@ -1,4 +1,4 @@
-import { Mic, Video, PhoneOff, MicOff, VideoOff, Settings, Captions, CaptionsOff, Bot, Monitor, MonitorOff, Keyboard, Volume2 } from "lucide-react";
+import { Mic, Video, PhoneOff, MicOff, VideoOff, Settings, Captions, CaptionsOff, Bot, Monitor, MonitorOff, Keyboard, Volume2, Smartphone } from "lucide-react";
 
 const FloatingControls = ({
   muted,
@@ -15,6 +15,8 @@ const FloatingControls = ({
   toggleMorse,
   isMorseOutputEnabled,
   toggleMorseOutput,
+  isVibrationEnabled,
+  toggleVibration,
 }) => {
   return (
     <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
@@ -115,6 +117,19 @@ const FloatingControls = ({
           title={isMorseOutputEnabled ? "Turn off Morse Code Output" : "Turn on Morse Code Output"}
         >
           <Volume2 size={18} />
+        </button>
+
+        {/* Vibration Control */}
+        <button
+          onClick={toggleVibration}
+          className={`p-3 rounded-2xl transition-all duration-200 shadow-lg ${
+            isVibrationEnabled
+              ? "bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white transform hover:scale-105"
+              : "bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 text-gray-200 hover:text-white"
+          }`}
+          title={isVibrationEnabled ? "Turn off Mobile Vibration Output" : "Turn on Mobile Vibration Output"}
+        >
+          <Smartphone size={18} />
         </button>
 
       </div>

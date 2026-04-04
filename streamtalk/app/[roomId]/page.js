@@ -1,8 +1,7 @@
-"use client";
-
 import { useEffect, useState, useRef } from "react";
 import { cloneDeep } from "lodash";
 import { useParams } from "next/navigation";
+import io from 'socket.io-client';
 
 import { useSocket } from "@/store/socket";
 import usePeer from "@/hooks/use-peer";
@@ -165,10 +164,12 @@ const Room = () => {
   const [isAvatarEnabled, setIsAvatarEnabled] = useState(false);
   const [isMorseEnabled, setIsMorseEnabled] = useState(false);
   const [isMorseOutputEnabled, setIsMorseOutputEnabled] = useState(false);
+  const [isVibrationEnabled, setIsVibrationEnabled] = useState(false);
   const [morseText, setMorseText] = useState('');
   const avatarIframeRef = useRef(null);
   const [morseDraft, setMorseDraft] = useState('');
   const [showMorseReady, setShowMorseReady] = useState(false);
+  const hapticSocketRef = useRef(null);
 
   const callState = useRef({});
   const CALL_RETRY_MAX = 4;
@@ -290,9 +291,14 @@ const Room = () => {
           const morseCode = textToMorse(latestCaption.text);
           playMorseAudio(morseCode);
         }
+
+        // Send vibration if enabled
+        if (isVibrationEnabled) {
+          sendVibration(latestCaption.text);
+        }
       }
     }
-  }, [captions, isAvatarEnabled, isSpeechEnabled, isMorseOutputEnabled]);
+  }, [captions, isAvatarEnabled, isSpeechEnabled, isMorseOutputEnabled, isVibrationEnabled]);
 
 
   // Call duration timer
@@ -324,6 +330,51 @@ const Room = () => {
     setMorseText('');
     setShowMorseReady(false);
   };
+
+  // Vibration output logic
+  const sendVibration = (text) => {
+    if (!isVibrationEnabled || !text || !hapticSocketRef.current) return;
+
+    try {
+      hapticSocketRef.current.emit('vibrate', { text });
+      console.log(`📳 Sent vibration for text: "${text}"`);
+    } catch (error) {
+      console.warn('❌ Failed to send vibration:', error);
+    }
+  };
+
+  // Connect/disconnect to haptic bridge
+  useEffect(() => {
+    if (isVibrationEnabled && typeof window !== 'undefined') {
+      try {
+        hapticSocketRef.current = io('http://localhost:5000', {
+          transports: ['websocket', 'polling']
+        });
+
+        hapticSocketRef.current.on('connect', () => {
+          console.log('🔗 Connected to haptic bridge');
+        });
+
+        hapticSocketRef.current.on('disconnect', () => {
+          console.log('🔌 Disconnected from haptic bridge');
+        });
+
+        return () => {
+          if (hapticSocketRef.current) {
+            hapticSocketRef.current.disconnect();
+            hapticSocketRef.current = null;
+          }
+        };
+      } catch (error) {
+        console.warn('❌ Could not connect to haptic bridge. Make sure haptic_bridge.py is running locally.');
+      }
+    } else {
+      if (hapticSocketRef.current) {
+        hapticSocketRef.current.disconnect();
+        hapticSocketRef.current = null;
+      }
+    }
+  }, [isVibrationEnabled]);
 
   useEffect(() => {
     if (!socket || !peer || !stream) return;
@@ -721,6 +772,8 @@ const Room = () => {
             toggleMorse={() => setIsMorseEnabled(!isMorseEnabled)}
             isMorseOutputEnabled={isMorseOutputEnabled}
             toggleMorseOutput={() => setIsMorseOutputEnabled(!isMorseOutputEnabled)}
+            isVibrationEnabled={isVibrationEnabled}
+            toggleVibration={() => setIsVibrationEnabled(!isVibrationEnabled)}
           />
         )}
 

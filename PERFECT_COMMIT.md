@@ -1,30 +1,32 @@
 # Perfect State Commit
 
-## Last Stable Commit: 092d24766
+## Last Stable Commit: 43a4407ca
 
-**Commit Message**: feat: add OpenRouter Qwen fallback for LLM translation when Gemini rate limits, update UI text to 'LLM Translating Context', add requests dependency
+**Commit Message**: feat: enhanced morse flow with c/s/e/Enter behavior and reliable message send
 
-**Date**: April 3, 2026
+**Date**: April 4, 2026
 
 **Changes**:
-- Added OpenRouter API integration as fallback for Gemini rate limits.
-- Modified `ml/streamtalk_backend.py` to include `fetch_openrouter_translation` function.
-- Updated UI in `streamtalk/components/ui/captions-overlay.js` to show "LLM Translating Context" instead of "Gemini Translating Context".
-- Added `requests==2.31.0` to `ml/requirements.txt`.
-- Ensured seamless fallback without breaking existing features.
+- Enhanced Morse code input with explicit workflow: SPACE for dot/dash, c to commit letter, s for word space, e for finalize+speech, Enter to send, Backspace to clear.
+- Morse messages now appear in chat with proper user identity (You/peer ID).
+- Integrated Morse input with existing chat and caption systems.
+- Improved PeerJS reconnection robustness with retry limits and heartbeat monitoring.
+- Updated `streamtalk/components/ui/morse-code.jsx` and `streamtalk/app/[roomId]/page.js` for new behavior.
+- Ensured no breaking changes to existing features.
 
 **Why Perfect**:
-- All features working: video, audio, sign recognition, emotion, LLM translation with fallback.
-- No runtime errors (e.g., activeStream fixed).
+- All features working: video, audio, sign recognition, emotion, LLM translation with fallback, Morse input.
+- Morse input works exactly as requested: buffer accumulation, explicit controls, proper message sending.
+- No runtime errors; build passes successfully.
 - Auto-deploy ready on Vercel and Hugging Face Spaces.
-- Comprehensive testing possible.
+- Comprehensive testing possible for Morse input.
 
 **Rollback Command** (if needed):
 ```
-git reset --hard 092d24766
+git reset --hard 43a4407ca
 ```
 
-This commit represents the fully functional, stable state before adding new features.
+This commit represents the fully functional, stable state with perfect Morse input before adding Morse output features.
 - **Emotion Detection**: Facial emotion recognition using PyTorch model, detecting emotions like Happy, Sad, Angry, etc.
 - **LLM Translation**: Context-aware sentence generation from sign words and emotions using Gemini API with OpenRouter Qwen fallback for rate limit handling.
 - **Captions and Chat**: Real-time captions broadcasted to all peers, with chat functionality.
