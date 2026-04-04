@@ -24,6 +24,7 @@ import SimpleVideoGrid from "@/components/ui/simple-video-grid";
 import SimpleChat from "@/components/ui/simple-chat";
 import PermissionRequest from "@/components/ui/permission-request";
 import MorseCode from "@/components/ui/morse-code";
+import { VibrationSetupModal } from "@/components/ui/vibration-setup-modal";
 
 const MORSE_CODE = {
   '.-': 'A',
@@ -172,6 +173,8 @@ const Room = () => {
   const [showMorseReady, setShowMorseReady] = useState(false);
   const hapticSocketRef = useRef(null);
   const lastSpokenCaptionRef = useRef(null);
+  const [showVibrationSetup, setShowVibrationSetup] = useState(false);
+  const [hapticBridgeConnected, setHapticBridgeConnected] = useState(false);
 
   const callState = useRef({});
   const CALL_RETRY_MAX = 4;
@@ -346,6 +349,9 @@ const Room = () => {
   // Connect/disconnect to haptic bridge
   useEffect(() => {
     if (isVibrationEnabled && typeof window !== 'undefined') {
+      // Show setup guide on first vibration enable
+      setShowVibrationSetup(true);
+
       try {
         hapticSocketRef.current = io('http://localhost:5000', {
           transports: ['websocket', 'polling'],
@@ -357,15 +363,18 @@ const Room = () => {
 
         hapticSocketRef.current.on('connect', () => {
           console.log('✅ Connected to haptic bridge at localhost:5000');
+          setHapticBridgeConnected(true);
         });
 
         hapticSocketRef.current.on('connect_error', (error) => {
           console.warn('❌ Haptic bridge connection error:', error?.message || error);
           console.warn('⚠️ Make sure haptic_bridge.py is running: python haptic_bridge.py');
+          setHapticBridgeConnected(false);
         });
 
         hapticSocketRef.current.on('disconnect', () => {
           console.log('🔌 Disconnected from haptic bridge');
+          setHapticBridgeConnected(false);
         });
 
         return () => {
@@ -377,12 +386,14 @@ const Room = () => {
       } catch (error) {
         console.warn('❌ Could not initialize haptic bridge connection:', error?.message || error);
         console.warn('⚠️ Make sure haptic_bridge.py is running on localhost:5000');
+        setHapticBridgeConnected(false);
       }
     } else {
       if (hapticSocketRef.current) {
         hapticSocketRef.current.disconnect();
         hapticSocketRef.current = null;
       }
+      setHapticBridgeConnected(false);
     }
   }, [isVibrationEnabled]);
 
@@ -796,6 +807,14 @@ const Room = () => {
           />
         )}
       </SimpleCallLayout>
+
+      {/* Vibration Setup Modal */}
+      <VibrationSetupModal 
+        isOpen={showVibrationSetup}
+        onClose={() => setShowVibrationSetup(false)}
+        connectionStatus={hapticBridgeConnected}
+        hapticBridgeConnected={hapticBridgeConnected}
+      />
     </>
   );
 };
