@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from "react";
 import { cloneDeep } from "lodash";
 import { useParams } from "next/navigation";
-import io from 'socket.io-client';
 
 import { useSocket } from "@/store/socket";
 import usePeer from "@/hooks/use-peer";
@@ -175,6 +174,7 @@ const Room = () => {
   const lastSpokenCaptionRef = useRef(null);
   const [showVibrationSetup, setShowVibrationSetup] = useState(false);
   const [hapticBridgeConnected, setHapticBridgeConnected] = useState(false);
+  const [bridgeWindow, setBridgeWindow] = useState(null);
 
   const callState = useRef({});
   const CALL_RETRY_MAX = 4;
@@ -334,16 +334,172 @@ const Room = () => {
     setShowMorseReady(false);
   };
 
+  // Start vibration bridge (opens in new window)
+  const onStartBridge = () => {
+    try {
+      // Open bridge in new window
+      const bridgeUrl = `${window.location.origin}/api/vibration-bridge`;
+      const newWindow = window.open(
+        bridgeUrl,
+        'vibration-bridge',
+        'width=500,height=700,scrollbars=yes,resizable=yes'
+      );
+
+      if (newWindow) {
+        setBridgeWindow(newWindow);
+        console.log('🌉 Opened vibration bridge window');
+
+        // Check if window is closed
+        const checkClosed = setInterval(() => {
+          if (newWindow.closed) {
+            clearInterval(checkClosed);
+            setBridgeWindow(null);
+            setBridgeSocket(null);
+            setHapticBridgeConnected(false);
+            console.log('🌉 Bridge window closed');
+          }
+        }, 1000);
+
+        // Wait a bit for the bridge to load, then establish connection
+        setTimeout(() => {
+          if (!newWindow.closed) {
+            establishBridgeConnection();
+          }
+        }, 2000);
+      } else {
+        console.warn('⚠️ Could not open bridge window. Please allow popups for this site.');
+        alert('Please allow popups for this site to use the vibration feature.');
+      }
+    } catch (error) {
+      console.error('❌ Error starting bridge:', error);
+    }
+  };
+
+  // Establish connection to bridge via postMessage
+  const establishBridgeConnection = () => {
+    try {
+      if (bridgeWindow && !bridgeWindow.closed) {
+        console.log('✅ Bridge window is open, connection established');
+        setHapticBridgeConnected(true);
+
+        // Listen for messages from bridge
+        const messageHandler = (event) => {
+          // Only accept messages from our bridge origin
+          if (event.source === bridgeWindow) {
+            if (event.data.type === 'BRIDGE_READY') {
+              console.log('✅ Bridge confirmed ready');
+              setHapticBridgeConnected(true);
+            } else if (event.data.type === 'BRIDGE_CLOSED') {
+              console.log('🔌 Bridge window closed');
+              setHapticBridgeConnected(false);
+              setBridgeWindow(null);
+              window.removeEventListener('message', messageHandler);
+            }
+          }
+        };
+
+        window.addEventListener('message', messageHandler);
+
+        // Send ready signal to bridge
+        setTimeout(() => {
+          if (bridgeWindow && !bridgeWindow.closed) {
+            bridgeWindow.postMessage({ type: 'MAIN_APP_READY' }, '*');
+          }
+        }, 1000);
+
+      } else {
+        console.warn('❌ Bridge window not available');
+        setHapticBridgeConnected(false);
+      }
+    } catch (error) {
+      console.error('❌ Error establishing bridge connection:', error);
+    }
+  };
+
   // Vibration output logic
   const sendVibration = (text) => {
-    if (!isVibrationEnabled || !text || !hapticSocketRef.current) return;
+    if (!isVibrationEnabled || !text || !bridgeWindow || bridgeWindow.closed) return;
 
     try {
-      hapticSocketRef.current.emit('vibrate', { text });
-      console.log(`📳 Sent vibration for text: "${text}"`);
+      // Convert text to Morse
+      const morse = textToMorse(text);
+      const pattern = morseToVibrationPattern(morse);
+
+      // Send to bridge via postMessage
+      const vibrationData = {
+        type: 'VIBRATE_MOBILE',
+        data: {
+          text,
+          morse,
+          pattern
+        }
+      };
+
+      bridgeWindow.postMessage(vibrationData, '*');
+      console.log(`📳 Sent vibration to bridge: "${text}" → ${morse}`);
     } catch (error) {
       console.warn('❌ Failed to send vibration:', error);
     }
+  };
+
+  // Morse code to vibration pattern conversion
+  const morseToVibrationPattern = (morseCode) => {
+    const pattern = [];
+    const dotDuration = 200;
+    const dashDuration = 600;
+    const gapDuration = 200;
+    const letterGap = 1000;
+    const wordGap = 1500;
+
+    const symbols = morseCode.split(' ');
+
+    for (let i = 0; i < symbols.length; i++) {
+      const symbol = symbols[i];
+      if (symbol === '/') {
+        if (pattern.length > 0 && pattern[pattern.length - 1] !== 0) {
+          pattern.push(0);
+        }
+        pattern.push(wordGap);
+      } else {
+        for (let j = 0; j < symbol.length; j++) {
+          const char = symbol[j];
+          if (char === '.') {
+            pattern.push(dotDuration);
+          } else if (char === '-') {
+            pattern.push(dashDuration);
+          }
+
+          if (j < symbol.length - 1) {
+            pattern.push(0);
+            pattern.push(gapDuration);
+          }
+        }
+
+        if (i < symbols.length - 1 && symbols[i + 1] !== '/') {
+          pattern.push(0);
+          pattern.push(letterGap);
+        }
+      }
+    }
+
+    return pattern;
+  };
+
+  // Text to Morse code conversion
+  const textToMorse = (text) => {
+    const morseMap = {
+      'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.',
+      'F': '..-.', 'G': '--.', 'H': '....', 'I': '..', 'J': '.---',
+      'K': '-.-', 'L': '.-..', 'M': '--', 'N': '-.', 'O': '---',
+      'P': '.--.', 'Q': '--.-', 'R': '.-.', 'S': '...', 'T': '-',
+      'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-', 'Y': '-.--',
+      'Z': '--..',
+      '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-',
+      '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.',
+      ' ': '/'
+    };
+
+    return text.toUpperCase().split('').map(char => morseMap[char] || '').join(' ');
   };
 
   // Connect/disconnect to haptic bridge
@@ -814,6 +970,7 @@ const Room = () => {
         onClose={() => setShowVibrationSetup(false)}
         connectionStatus={hapticBridgeConnected}
         hapticBridgeConnected={hapticBridgeConnected}
+        onStartBridge={onStartBridge}
       />
     </>
   );

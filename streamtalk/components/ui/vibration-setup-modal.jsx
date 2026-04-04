@@ -1,28 +1,16 @@
-import { X, Smartphone, Wifi, Zap, AlertCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { X, Smartphone, Zap, CheckCircle, Loader } from "lucide-react";
 
-export const VibrationSetupModal = ({ isOpen, onClose, connectionStatus, hapticBridgeConnected }) => {
-  const [laptopIP, setLaptopIP] = useState('');
+export const VibrationSetupModal = ({
+  isOpen,
+  onClose,
+  connectionStatus,
+  hapticBridgeConnected,
+  onStartBridge
+}) => {
   const [step, setStep] = useState(0);
-
-  useEffect(() => {
-    // Try to get local IP address
-    if (isOpen && !laptopIP) {
-      fetch('https://api.ipify.org?format=json')
-        .then(r => r.json())
-        .then(data => {
-          // This is WAN IP, for local network we'd need the LAN IP
-          // Better: use window.location.hostname or similar
-          const hostname = window.location.hostname;
-          setLaptopIP(hostname || 'localhost');
-        })
-        .catch(() => {
-          setLaptopIP(window.location.hostname || 'localhost');
-        });
-    }
-  }, [isOpen, laptopIP]);
-
-  if (!isOpen) return null;
+  const [bridgeStarted, setBridgeStarted] = useState(false);
+  const [startingBridge, setStartingBridge] = useState(false);
 
   const steps = [
     {
@@ -41,77 +29,115 @@ export const VibrationSetupModal = ({ isOpen, onClose, connectionStatus, hapticB
             </li>
             <li>Laptop will show network connection notification</li>
           </ol>
-        </div>
-      ),
-    },
-    {
-      title: "🖥️ Start Haptic Bridge",
-      icon: <Zap className="w-8 h-8 text-yellow-500" />,
-      content: (
-        <div className="text-left space-y-3">
-          <p className="text-sm text-gray-700">On your laptop, open Terminal/PowerShell and run:</p>
-          <div className="bg-gray-900 text-white p-3 rounded-lg font-mono text-xs overflow-x-auto">
-            cd ml<br />
-            python haptic_bridge.py
-          </div>
-          <p className="text-xs text-gray-500">Wait until you see: <strong>"📱 MOBILE HAPTIC BRIDGE STARTED"</strong></p>
-          <div className={`p-2 rounded-lg text-xs font-mono ${hapticBridgeConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-            {hapticBridgeConnected ? '✅ Bridge is running' : '⏳ Waiting for bridge to start...'}
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: "📲 Visit on Mobile",
-      icon: <Wifi className="w-8 h-8 text-purple-500" />,
-      content: (
-        <div className="text-left space-y-3">
-          <p className="text-sm text-gray-700">On your phone browser, visit:</p>
-          <div className="bg-gray-100 p-3 rounded-lg">
-            <code className="text-sm font-mono break-all">
-              http://{laptopIP}:5000
-            </code>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(`http://${laptopIP}:5000`);
-                alert('Copied to clipboard!');
-              }}
-              className="ml-2 text-blue-600 text-xs hover:underline"
-            >
-              Copy
-            </button>
-          </div>
-          <p className="text-xs text-gray-500">
-            You should see a purple page saying "<strong>Haptic Receiver</strong>" with connection status.
-          </p>
-        </div>
-      ),
-    },
-    {
-      title: "✅ Ready to Use",
-      icon: <Zap className="w-8 h-8 text-green-500" />,
-      content: (
-        <div className="text-left space-y-3">
-          <p className="text-sm text-gray-700">Now you can use vibration output:</p>
-          <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600">
-            <li>Keep the Haptic Bridge running on your laptop</li>
-            <li>Keep the mobile page open on your phone</li>
-            <li>Enable <strong>Vibration Output</strong> (📱 button) in the app</li>
-            <li>Speak text or input Morse code</li>
-            <li>Your phone will vibrate in Morse code pattern!</li>
-          </ol>
           <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-xs text-blue-800">
-              <strong>💡 Tip:</strong> The vibration pattern is:
-              <br />• Short vibration = Dot (·)
-              <br />• Long vibration = Dash (−)
-              <br />• Pause = Letter separator
+              <strong>💡 Note:</strong> USB tethering creates a direct connection between your devices.
+              No WiFi or internet required!
             </p>
           </div>
         </div>
       ),
     },
+    {
+      title: "🌉 Start Vibration Bridge",
+      icon: <Zap className="w-8 h-8 text-purple-500" />,
+      content: (
+        <div className="text-left space-y-3">
+          <p className="text-sm text-gray-700">Click the button below to start the vibration bridge:</p>
+
+          <div className="flex justify-center my-6">
+            <button
+              onClick={async () => {
+                if (onStartBridge) {
+                  setStartingBridge(true);
+                  try {
+                    await onStartBridge();
+                    setBridgeStarted(true);
+                  } catch (error) {
+                    console.error('Failed to start bridge:', error);
+                    alert('Failed to start bridge. Please try again.');
+                  } finally {
+                    setStartingBridge(false);
+                  }
+                }
+              }}
+              disabled={startingBridge || bridgeStarted}
+              className={`px-8 py-4 rounded-xl font-bold text-white text-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none ${
+                bridgeStarted
+                  ? 'bg-green-500 hover:bg-green-600'
+                  : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:shadow-lg'
+              }`}
+            >
+              {startingBridge ? (
+                <div className="flex items-center gap-2">
+                  <Loader className="w-5 h-5 animate-spin" />
+                  Starting Bridge...
+                </div>
+              ) : bridgeStarted ? (
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  Bridge Started! ✓
+                </div>
+              ) : (
+                '🚀 Start Bridge'
+              )}
+            </button>
+          </div>
+
+          <p className="text-sm text-gray-600">
+            This will open a popup window on your phone where the vibration bridge runs.
+          </p>
+
+          {bridgeStarted && (
+            <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+              <div className="flex items-center gap-2 text-green-800">
+                <CheckCircle className="w-4 h-4" />
+                <span className="text-sm font-medium">Bridge popup opened successfully!</span>
+              </div>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: "✅ Ready to Use",
+      icon: <CheckCircle className="w-8 h-8 text-green-500" />,
+      content: (
+        <div className="text-left space-y-3">
+          <p className="text-sm text-gray-700">Now you can use vibration output:</p>
+          <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600">
+            <li>Keep the bridge popup open on your phone</li>
+            <li>Enable <strong>Vibration Output</strong> (📱 button) in the app</li>
+            <li>Speak text or input Morse code</li>
+            <li>Your phone will vibrate in Morse code pattern!</li>
+          </ol>
+
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-xs text-blue-800">
+              <strong>🎯 How it works:</strong>
+              <br />• Text is converted to Morse code
+              <br />• Short vibration = Dot (·)
+              <br />• Long vibration = Dash (−)
+              <br />• Pause = Letter separator
+              <br />• Longer pause = Word separator
+            </p>
+          </div>
+
+          <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center gap-2 text-green-800">
+              <CheckCircle className="w-4 h-4" />
+              <span className="text-sm font-medium">
+                🎉 <strong>Zero Terminal Commands Required!</strong>
+                <br />Everything is controlled through this UI.
+              </span>
+            </div>
+          </div>
+        </div>
+      ),
+    },
   ];
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -156,16 +182,6 @@ export const VibrationSetupModal = ({ isOpen, onClose, connectionStatus, hapticB
                 <h3 className="text-lg font-bold text-gray-800">{steps[step].title}</h3>
               </div>
               <div>{steps[step].content}</div>
-
-              {/* Warning Box if Bridge Not Connected */}
-              {step === 2 && !hapticBridgeConnected && (
-                <div className="flex gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mt-4">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-yellow-800">
-                    <strong>⚠️ Haptic Bridge Not Running:</strong> Make sure you completed Step 2 and the bridge is running on your laptop.
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
