@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState, useRef } from "react";
 import { cloneDeep } from "lodash";
 import { useParams } from "next/navigation";

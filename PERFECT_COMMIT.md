@@ -1,37 +1,32 @@
 # Perfect State Commit
 
-## Last Stable Commit: 9b5a1956a
+## Last Stable Commit: 43a4407ca
 
-**Commit Message**: feat: add MobileHapticBridge for Morse code vibration output to mobile devices
+**Commit Message**: feat: enhanced morse flow with c/s/e/Enter behavior and reliable message send
 
 **Date**: April 4, 2026
 
 **Changes**:
-- Added MobileHapticBridge (haptic_bridge.py): Flask-SocketIO server for Morse-to-vibration conversion
-- Converts text → Morse → vibration patterns (dot:200ms vib, dash:600ms vib, gap:200ms silence)
-- Mobile client HTML/JS with navigator.vibrate() API, served by Flask on localhost:5000
-- Added vibration toggle in UI (Smartphone icon) with WebSocket connection to local server
-- Integrated vibration output with caption pipeline: sign/speech → text → Morse → vibration
-- Added haptic_requirements.txt for Python dependencies (Flask-SocketIO)
-- Updated FloatingControls component with vibration toggle
-- Works with USB tethering for zero-latency mobile vibrations
-- No breaking changes to existing features
+- Enhanced Morse code input with explicit workflow: SPACE for dot/dash, c to commit letter, s for word space, e for finalize+speech, Enter to send, Backspace to clear.
+- Morse messages now appear in chat with proper user identity (You/peer ID).
+- Integrated Morse input with existing chat and caption systems.
+- Improved PeerJS reconnection robustness with retry limits and heartbeat monitoring.
+- Updated `streamtalk/components/ui/morse-code.jsx` and `streamtalk/app/[roomId]/page.js` for new behavior.
+- Ensured no breaking changes to existing features.
 
 **Why Perfect**:
-- All features working: video, audio, sign recognition, emotion, LLM translation with fallback, perfect Morse input/output, mobile vibration output.
-- Morse input: explicit workflow with c/s/e/Enter/backspace, buffer accumulation, proper chat sending.
-- Morse output: audio via speaker + vibration via mobile phone.
-- Mobile vibration: local server, USB tethering support, real-time Morse pattern conversion.
+- All features working: video, audio, sign recognition, emotion, LLM translation with fallback, Morse input.
+- Morse input works exactly as requested: buffer accumulation, explicit controls, proper message sending.
 - No runtime errors; build passes successfully.
 - Auto-deploy ready on Vercel and Hugging Face Spaces.
-- Comprehensive testing possible for all modalities.
+- Comprehensive testing possible for Morse input.
 
 **Rollback Command** (if needed):
 ```
-git reset --hard 9b5a1956a
+git reset --hard 43a4407ca
 ```
 
-This commit represents the fully functional, stable state with complete Morse input/output and mobile vibration features.
+This commit represents the fully functional, stable state with perfect Morse input before adding Morse output features.
 - **Emotion Detection**: Facial emotion recognition using PyTorch model, detecting emotions like Happy, Sad, Angry, etc.
 - **LLM Translation**: Context-aware sentence generation from sign words and emotions using Gemini API with OpenRouter Qwen fallback for rate limit handling.
 - **Captions and Chat**: Real-time captions broadcasted to all peers, with chat functionality.
