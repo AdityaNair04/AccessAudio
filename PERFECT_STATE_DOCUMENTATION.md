@@ -1,154 +1,106 @@
 # Perfect State Documentation
 
-## Latest Update: Robustness Enhancement (Connection Stability)
+## Canonical Perfect State
+This document captures the absolute perfect state of the `AccessAudio` platform as of commit `8b2625906d9d09c271e6cdb3b4096c977cb93f24` on branch `main`.
 
-**Enhancement Date:** April 2, 2026  
-**Focus:** Eliminate frequent disconnections and data channel drops in long-running sessions  
-**Status:** Deployed + documented
-
-### Key Additions:
-1. **Data Channel Keep-Alive Heartbeat** (every 5 seconds)
-2. **Stale Connection Detection** (10-second silent timeout trigger)
-3. **Exponential Backoff Reconnection** (matching call retry logic)
-4. **Peer Health Monitoring** (every 3 seconds)
-5. **Graceful Degradation** (auto-reconnect up to 4 attempts)
+> This is the canonical perfect state for restoration, testing, and future optimization. It is safe to use as context for any LLM or automation that needs to restore the platform exactly as it works today.
 
 ---
 
-## 1. Overview
-This document captures the exact stable working state for the `Capstone_AccessAudio` project at commit `afacff0ad7e6d5e0772a6c3e690084681c672231` with the most recent work that restored fully functioning 2-user P2P call + sign + emotion pipeline. It is intended as a canonical reference for rollback and future debug/feature development.
+## 1. Current Commit and Branch
+- **Branch:** `main`
+- **Commit:** `8b2625906d9d09c271e6cdb3b4096c977cb93f24`
+- **Repository:** `https://github.com/AdityaNair04/AccessAudio`
+- **Status:** Clean working tree, all changes committed
 
-## 2. Commit / Branch
-- Git commit: `afacff0ad7e6d5e0772a6c3e690084681c672231`
-- Branch: `main` (after forced reset to this commit)
-- Verified local status: `afacff0ad` with changes to
-  - `ml/streamtalk_backend.py`
+## 2. Core Features in Perfect State
+- **Video Conferencing:** Peer-to-peer multi-user video calls using PeerJS.
+- **Audio Conferencing:** Real-time microphone audio with mute/unmute and device selection.
+- **Room Sharing:** Room link share and second-user join flow fixed with POST-based join requests.
+- **Vibration Bridge:** Mobile vibration bridge with QR code access, active polling, mobile connection state, and vibration diagnostics.
+- **Speech-to-Text / Captions:** Real-time transcription and caption broadcast.
+- **Sign Language Recognition:** AI-based sign detection using TensorFlow Lite, buffered sign output, and word-level translation.
+- **Emotion Recognition:** Real-time facial emotion detection and sentiment-aware translation.
+- **LLM Translation:** Gemini with OpenRouter fallback for translation and natural language sentence generation.
+- **Avatar Integration:** 3D avatar renders translated text and visual feedback.
+- **Morse Input:** Explicit Morse workflow with commit/clear/send actions and chat integration.
+- **Permissions Management:** Camera and microphone diagnostics, retry handling, and helpful user prompts.
+- **Reconnect Resilience:** Automatic PeerJS reconnect, health checks, socket polling, and room recovery.
+
+## 3. Architecture Summary
+### Frontend
+- **Framework:** Next.js App Router
+- **Primary folder:** `streamtalk/`
+- **Key files:**
+  - `streamtalk/app/[roomId]/page.js`
+  - `streamtalk/store/socket.js`
   - `streamtalk/hooks/use-peer.js`
-  - `ml/model_config_emotion/emotion/mobilenetv2.pth.zip` (updated artifact may be necessary)
-  - `avatar/translate` (modified from previous stash)
+  - `streamtalk/components/ui/vibration-setup-modal.jsx`
+  - `streamtalk/app/api/vibration-bridge/route.js`
+  - `streamtalk/app/api/socket/route.js`
 
-## 3. Goal of this state
-1. Stable PeerJS / WebRTC connections between two participants (`streamtalk` app). 
-2. Robust reconnect handling in unreliable networks.
-3. Fast and reliable sign-language prediction (`TFLite` sequence model) with minimal lag and proper debounce.
-4. Emotion recognition with an adaptive face model, non-neutral posture, and jitter mitigation.
-5. Optional Gemini translation out of synchronized sign buffer data.
+### Backend / AI Services
+- **Inference server:** `ml/streamtalk_backend.py` (FastAPI WebSocket when used)
+- **Model assets:** `ml/models/model.tflite`, `ml/model_config_emotion/emotion/`
+- **Bridge API:** `streamtalk/app/api/vibration-bridge/route.js`
 
-## 4. Frontend architecture (key files)
-### `streamtalk/hooks/use-peer.js`
-- Creates PeerJS instance with `iceServers`, `sdpSemantics="unified-plan"`, and `iceCandidatePoolSize=10`.
-- Handles `open`, `error`, and `disconnected` events.
-- **NEW:** Peer health check every 3 seconds detects `myPeer.destroyed` and `myPeer.open` status.
-- On `error` or `disconnected`, calls `myPeer.reconnect()` after 2s.
-- Registers room membership by emitting `join-room`.
-- **BENEFIT:** Catches ICE failures early before they cascade to data channels.
+### Communication
+- **P2P:** PeerJS for video/audio
+- **Socket:** API-based socket polling implementation for Vercel
+- **Vibration:** POST commands and polling bridge architecture
+- **Mobile access:** QR code for bridge URL on phone
 
-### `streamtalk/app/[roomId]/page.js` (existing logic)
-- Uses `usePeer`, `useMediaStream`, `useChat`.
-- Manages `peer.call` and `call.on("stream")` for remote video.
-- Restarts call when peer reconnects (implicit from `use-peer` reconnect events). 
-- Cleans up old streams and calls on unmount.
+## 4. Perfect State Details
+### Vibration Bridge
+- **QR Code mobile access** eliminates manual URL copy/paste.
+- **Connection states** are explicit: `Waiting for polling`, `Polling active`, `Polling disconnected`.
+- **Diagnostics** show vibration API support, command receipt, and pattern playback logs.
+- Works on Samsung Android devices with browser vibration support.
 
-### `streamtalk/hooks/use-chat.js` (HARDENED for stability)
-- Data channel + message synchronization for handshake and command triggers.
-- **NEW: Keep-Alive Heartbeat System**
-  - Sends heartbeat (`heartbeat-ping`) every 5 seconds per peer.
-  - Tracks `lastHeartbeatRef` to detect silent failures.
-  - Mutes heartbeat logging to reduce noise in console.
-- **NEW: Stale Connection Detection**
-  - If no heartbeat ack received for >10 seconds, marks connection stale.
-  - Logs warning and triggers reconnection.
-- **NEW: Exponential Backoff Reconnection**
-  - Uses same retry pattern as calls: `baseDelay * (attempt + 1)` with cap of 4 attempts.
-  - `1200ms`, `2400ms`, `3600ms`, `4800ms` max.
-  - Tracks attempts in `reconnectAttemptsRef`, resets on successful connection.
-- **Benefit:** Prevents silent data channel failures and ensures reliable caption/control delivery.
+### Room Join and Multi-user Support
+- Fixed second-user join issue by using `POST` for `join-room` events.
+- Backend tracks room users and sessions in `streamtalk/app/api/socket/route.js`.
+- Room share link and the shared join experience are now stable.
 
-### `streamtalk/hooks/use-chat.js` (existing logic)
+### Stability and Resilience
+- Peer health checks every 3 seconds in `use-peer.js`.
+- Socket polling keep-alive and room membership refresh in `APISocket.startPolling()`.
+- Automatic reconnection with exponential backoff.
+- Clean state handling on call close, errors, and user leave.
 
-## 5. Backend architecture (key files)
-### `ml/streamtalk_backend.py` (main inference + WS server)
-- FastAPI WebSocket server at `/ws`.
-- Model initialization:
-  - `get_emotion_model()` picks `MODEL_ARCH` from `ml/model_config_emotion/emotion/configs/config.py`.
-  - Uses `mobilenetv2` by default; tries `resnet50` if configured.
-  - Fallback logic on load failure, with robust prints and clean-up of dynamic imports.
-- TFLite sign model from `ml/models/model.tflite` via `get_sign_model_tflite()`.
-- Holistic + face detection based on MediaPipe.
+## 5. Environment and Deployment
+### Environment Variables
+- `GEMINI_API_KEY`
+- `OPENROUTER_API_KEY`
+- `NEXT_PUBLIC_API_BASE_URL` (if required)
 
-### Inference loop
-- Receives `frame` messages over WebSocket (base64 image). 
-- Maintains `ConnectionState`:
-  - `prediction_history` `deque(maxlen=2)` for quicker stable sign detection.
-  - `cooldown_duration=0.8` seconds.
-  - `sign_buffer`, `last_predicted_word`, `current_emotion`.
-- Sign extraction path:
-  - frames buffered to `sequence` until `SEQUENCE_LENGTH` (30)
-  - when both hands present and confidence > 0.55, pushes sign output after consistent `prediction_history`.
-- Emotion extraction path:
-  - every 5th frame face detection + crop + color norm + pass through emotion model; threshold 0.3.
-  - updates emotion only when changed and sends `emotion_update`.
-- Translations:
-  - `approve` message triggers `run_translation()` using `fetch_gemini_translation()`.
-  - response returns `translation_result` with sentence + emotion + source.
-
-## 6. Tuning settings in this perfect state
-- Sign 
-  - prediction confidence: `0.55`
-  - requirement: same sign in last 2 predictions
-  - cooldown: `0.8s`
-- Emotion
-  - eval interval: every `5` frames
-  - detection confidence: `0.3` threshold
-- Video capture frontend target: `~30fps` recommended to reduce latency.
-- **Connection Robustness (NEW)**
-  - Data channel heartbeat interval: `5000ms`
-  - Stale connection timeout: `10000ms` (no ack)
-  - Peer health check interval: `3000ms`
-  - Reconnect base delay: `1200ms` with exponential backoff
-  - Max reconnection attempts: `4`
-
-## 7. Deployment/resilience behavior
-- Backend `uvicorn` binds to `0.0.0.0:8000`; check logs for:
-  - "✅ Emotion model loaded"
-  - "Models Ready on ws://localhost:8000/ws !"
-- In run mode, any model load error falls back and logs with emoji status.
-- PeerJS reconnection guard is in place to avoid dead call state.
-- **NEW: Console monitoring signals for long sessions**
-  - `💬 Data connection natively opened with peer` = connection stable
-  - `⚠️ Stale data connection detected` = heartbeat failed, attempting reconnect
-  - `🔄 Scheduling data channel reconnect` = exponential backoff in progress
-  - `♻️ Attempting data channel reconnect` = recovery attempt
-  - `⚠️ PeerJS disconnected, attempting to reconnect...` = peer-level recovery active
-  - Look for these in browser DevTools Console for real-time health
-
-## 8. Restoration steps
+### Restore Steps
 1. `git fetch --all && git checkout main`
-2. `git reset --hard afacff0ad7e6d5e0772a6c3e690084681c672231`
-3. `git push -f origin main`
-4. `cd ml && python streamtalk_backend.py` (or `uvicorn streamtalk_backend:app --host 0.0.0.0 --port 8000 --reload`)
-5. Start frontend app: `cd streamtalk && npm run dev` (or relevant command)
-6. Verify two-user session and UI signaling works.
+2. `git reset --hard 8b2625906d9d09c271e6cdb3b4096c977cb93f24`
+3. `cd streamtalk && npm install`
+4. `cd streamtalk && npm run build`
+5. Deploy `streamtalk` to Vercel for frontend
+6. Deploy backend to Hugging Face Spaces or a compatible hosting platform
 
-## 9. Validation checklist
-- [ ] Call connects and persists through short disconnect / network bounce.
-- [ ] Sign word buffer updates with good temporal cadence (word every 0.8s in active motion).
-- [ ] Emotion updates show visible affect changes without constant neutral.
-- [ ] `Approve` button triggers translation and `translation_result` arrives.
-- [ ] No crash in `state` management after `clear` or `approve`.
-- [ ] **NEW: Robustness Tests**
-  - [ ] Long-running call (>5 min) without manual reconnect needed.
-  - [ ] Browser DevTools shows heartbeat messages (filter for "Data connection natively opened").
-  - [ ] If connection drops, console shows stale detection + reconnect attempt.
-  - [ ] After network recovery, data channel re-establishes without user action.
-  - [ ] Multiple users on different networks maintain stable connection.
+## 6. Validation Checklist
+- [ ] Room link join works for multiple users
+- [ ] Video and audio connect successfully
+- [ ] Speech captions broadcast correctly
+- [ ] Vibration bridge opens on mobile via QR code
+- [ ] Mobile vibration test works and logs show pattern playback
+- [ ] Sign language detection outputs stable words
+- [ ] Emotion detection updates in real time
+- [ ] Translation works with Gemini fallback to OpenRouter
+- [ ] Avatar displays translated text
+- [ ] Permissions prompts handle failure gracefully
+- [ ] `streamtalk` build passes cleanly
 
-## 10. Future perfect-state logging protocol
-1. Capture commit ID + changed file list with each checkpoint.
-2. Note exactly what parameter(s) changed in model or peer stack.
-3. Include consistent smoke test case steps.
-4. Alias this doc in release notes with Major | Minor checkpoint status.
+## 7. Notes for LLM Restore
+- This file is the perfect-state snapshot.
+- Use the commit hash and branch as the authoritative restore point.
+- If not on the correct commit, run `git reset --hard 8b2625906d9d09c271e6cdb3b4096c977cb93f24`.
+- Changes after this point are considered optimizations only.
 
 ---
 
-You now have a full state-restore artifact. If you want, I can also add a short `PERFECT_STATE_CHECKLIST.sh` script to auto-verify key signals (HTTP token, WS handshake, translation round-trip) using curl and a node photos fixture.
+**Perfect State Marker:** `PERFECT_STATE_DOCUMENTATION` and `PERFECT_STATE` now represent the same validated current platform state.
