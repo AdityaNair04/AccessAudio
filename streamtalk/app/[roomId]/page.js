@@ -165,13 +165,13 @@ const Room = () => {
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
   const [isAvatarEnabled, setIsAvatarEnabled] = useState(false);
   const [isMorseEnabled, setIsMorseEnabled] = useState(false);
-  const [isMorseOutputEnabled, setIsMorseOutputEnabled] = useState(false);
   const [isVibrationEnabled, setIsVibrationEnabled] = useState(false);
   const [morseText, setMorseText] = useState('');
   const avatarIframeRef = useRef(null);
   const [morseDraft, setMorseDraft] = useState('');
   const [showMorseReady, setShowMorseReady] = useState(false);
   const hapticSocketRef = useRef(null);
+  const lastSpokenCaptionRef = useRef(null);
 
   const callState = useRef({});
   const CALL_RETRY_MAX = 4;
@@ -283,15 +283,13 @@ const Room = () => {
           }, '*');
         }
 
-        // Speak text if speech synthesis is enabled (for accessibility)
-        if (isSpeechEnabled) {
-          speakText(latestCaption.text);
-        }
-
-        // Play Morse code audio if Morse output is enabled
-        if (isMorseOutputEnabled) {
-          const morseCode = textToMorse(latestCaption.text);
-          playMorseAudio(morseCode);
+        // Speak text only if: (1) speech synthesis is enabled AND (2) this is a speech-generated caption (emotion === 'Speaking') AND (3) it hasn't been spoken already
+        if (isSpeechEnabled && latestCaption.emotion === 'Speaking') {
+          const captionId = `${latestCaption.text}-${latestCaption.emotion}`;
+          if (lastSpokenCaptionRef.current !== captionId) {
+            speakText(latestCaption.text);
+            lastSpokenCaptionRef.current = captionId;
+          }
         }
 
         // Send vibration if enabled
@@ -300,7 +298,7 @@ const Room = () => {
         }
       }
     }
-  }, [captions, isAvatarEnabled, isSpeechEnabled, isMorseOutputEnabled, isVibrationEnabled]);
+  }, [captions, isAvatarEnabled, isSpeechEnabled, isVibrationEnabled]);
 
 
   // Call duration timer
@@ -350,11 +348,20 @@ const Room = () => {
     if (isVibrationEnabled && typeof window !== 'undefined') {
       try {
         hapticSocketRef.current = io('http://localhost:5000', {
-          transports: ['websocket', 'polling']
+          transports: ['websocket', 'polling'],
+          reconnection: true,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 5000,
+          reconnectionAttempts: 5
         });
 
         hapticSocketRef.current.on('connect', () => {
-          console.log('🔗 Connected to haptic bridge');
+          console.log('✅ Connected to haptic bridge at localhost:5000');
+        });
+
+        hapticSocketRef.current.on('connect_error', (error) => {
+          console.warn('❌ Haptic bridge connection error:', error?.message || error);
+          console.warn('⚠️ Make sure haptic_bridge.py is running: python haptic_bridge.py');
         });
 
         hapticSocketRef.current.on('disconnect', () => {
@@ -368,7 +375,8 @@ const Room = () => {
           }
         };
       } catch (error) {
-        console.warn('❌ Could not connect to haptic bridge. Make sure haptic_bridge.py is running locally.');
+        console.warn('❌ Could not initialize haptic bridge connection:', error?.message || error);
+        console.warn('⚠️ Make sure haptic_bridge.py is running on localhost:5000');
       }
     } else {
       if (hapticSocketRef.current) {
@@ -772,8 +780,6 @@ const Room = () => {
             toggleAvatar={() => setIsAvatarEnabled(!isAvatarEnabled)}
             isMorseEnabled={isMorseEnabled}
             toggleMorse={() => setIsMorseEnabled(!isMorseEnabled)}
-            isMorseOutputEnabled={isMorseOutputEnabled}
-            toggleMorseOutput={() => setIsMorseOutputEnabled(!isMorseOutputEnabled)}
             isVibrationEnabled={isVibrationEnabled}
             toggleVibration={() => setIsVibrationEnabled(!isVibrationEnabled)}
           />
