@@ -1,9 +1,11 @@
 # 📱 Vibration Feature Setup Guide
 
-## Overview
-The vibration feature converts text (from speech recognition or Morse code input) into Morse code patterns that are sent to your mobile device via WebSocket, causing it to vibrate. This allows accessibility through tactile feedback.
+## 🎉 NEW: Production-Ready Web-Based Bridge (Zero Terminal Commands!)
 
-## Architecture
+The vibration feature is now **completely UI-controlled** with **zero terminal commands required**! Everything runs in the browser and works in production environments like Vercel.
+
+## How It Works Now
+
 ```
 ┌─────────────────────┐
 │  Web App (Browser)  │  Speech input, Morse input
@@ -13,41 +15,112 @@ The vibration feature converts text (from speech recognition or Morse code input
            │ Emotion: "Speaking"
            ▼
 ┌─────────────────────────┐
-│  Haptic Bridge Server   │  Flask-SocketIO
-│  (localhost:5000)       │  localhost:5000
+│  Web Bridge Popup      │  Next.js API Route
+│  (/api/vibration-bridge)│  postMessage communication
 └──────────┬──────────────┘
-           │ WebSocket
            │ Morse Pattern
+           │ Vibration Commands
            ▼
 ┌─────────────────────┐
 │ Mobile Device       │  USB Tethered
-│ (Vibration Client)  │  http://{laptop-ip}:5000
+│ (Web Vibration API) │  Popup window on mobile
 └─────────────────────┘
 ```
 
 ---
 
-## Step 1: Prerequisites
-- **Python 3.8+** installed on your laptop
-- **Mobile device** (Android or iOS) with USB cable
-- **USB Tethering capability** on your mobile
-- **Flask-SocketIO** installed in Python
+## 🚀 Quick Start (3 Simple Steps)
 
-### Install Python Dependencies
-In the `ml/` directory, run:
-```bash
-pip install flask flask-socketio python-socketio python-engineio
-```
+### Step 1: Connect Your Mobile
+1. Connect phone to laptop with USB cable
+2. Enable USB Tethering:
+   - **Android:** Settings → Network → USB Tethering
+   - **iOS:** Settings → Personal Hotspot → USB Tethering
+3. Your laptop should show a network connection notification
 
-Or ensure your AI environment has these packages:
-```bash
-cd ml/
-python -m pip install flask flask-socketio
-```
+### Step 2: Start the Bridge
+1. Open the StreamTalk app in your browser
+2. Click the **📱 Vibration** button to open setup
+3. Click **"🚀 Start Bridge"** button in the modal
+4. A popup window will open automatically
+
+### Step 3: Use Vibration
+1. Keep the bridge popup open on your phone
+2. Enable **Vibration Output** (📱 button) in the main app
+3. Speak text or input Morse code
+4. Your phone vibrates in Morse code patterns!
 
 ---
 
-## Step 2: Connect Mobile Device via USB Tethering
+## 🎯 Technical Details
+
+### Morse Code Patterns
+- **Dot (·)** = Short vibration (200ms)
+- **Dash (−)** = Long vibration (600ms)
+- **Letter Gap** = 200ms pause
+- **Word Gap** = 1000ms pause
+
+### Browser Compatibility
+- **Web Vibration API** supported on:
+  - ✅ Android Chrome
+  - ✅ iOS Safari (limited)
+  - ✅ Modern mobile browsers
+
+### Production Ready
+- ✅ Works in Vercel serverless
+- ✅ No terminal commands needed
+- ✅ No external servers required
+- ✅ USB tethering only
+- ✅ Fully accessible for disabled users
+
+---
+
+## 🧪 Testing the Implementation
+
+### Local Testing
+```bash
+cd streamtalk
+npm run dev
+# Open http://localhost:3000/test-room
+```
+
+### Production Testing
+The changes have been pushed to GitHub and should automatically deploy to:
+- **Vercel:** https://your-app.vercel.app
+- **Hugging Face Spaces:** https://your-space.hf.space
+
+### Test Steps
+1. **Open the app** in your browser
+2. **Connect mobile** via USB tethering
+3. **Click "Enable Vibration"** → **"Start Bridge"**
+4. **Verify popup opens** on your mobile screen
+5. **Speak text** in the main app
+6. **Feel vibrations** on your mobile device!
+
+---
+
+## 🔧 Troubleshooting
+
+### Bridge Popup Doesn't Open
+- Ensure popup blockers are disabled
+- Check browser console for errors
+- Try refreshing the page
+
+### No Vibration on Mobile
+- Verify USB tethering is active
+- Check that popup is open on mobile
+- Ensure mobile browser supports Web Vibration API
+
+### Connection Issues
+- Restart USB tethering
+- Try different USB cable
+- Check mobile battery level
+
+---
+
+## 📚 Legacy Documentation (Deprecated)
+
+The old Python server approach has been replaced with the web-based bridge above. The following is kept for reference only:
 
 ### Android
 1. Connect phone to laptop with USB cable
