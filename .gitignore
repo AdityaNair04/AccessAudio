@@ -38,3 +38,6 @@ ai_env/
 .venv/
 venv/
 sign-language-recognition/
+
+# Personal notes (not for publication)
+Preparation.md
