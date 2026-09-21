@@ -12,7 +12,7 @@ pinned: false
 
 # 🎙️ AccessAudio
 
-A multimodal, accessibility-first conferencing platform where **sign language, facial emotion, speech, Morse code, and haptic vibration** are all first-class channels — translated between each other in real time by computer-vision models and an LLM.
+A multimodal, accessibility-first conferencing platform where **sign language, facial emotion, speech, Morse code, and haptic vibration** are all first-class channels : translated between each other in real-time by computer-vision models and an LLM.
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
